@@ -372,15 +372,38 @@ function Elements.Shadow(target, radius, opacity)
 	return shadowHolder
 end
 
-function Elements.Hairline(target, insetLeft)
+function Elements.Hairline(target, sideOrInset, inset)
 	local hairline = Instance.new("Frame")
 	hairline.Name = "Hairline"
-	hairline.Size = UDim2.new(1, -(insetLeft or 12), 0, 1)
-	hairline.Position = UDim2.new(0, insetLeft or 12, 1, -1)
-	hairline.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	hairline.BackgroundTransparency = 0.92
 	hairline.BorderSizePixel = 0
 	hairline.ZIndex = (target.ZIndex or 2) + 1
+	hairline.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	hairline.BackgroundTransparency = 0.92
+
+	if typeof(sideOrInset) == "string" then
+		local side = string.lower(sideOrInset)
+		if side == "top" then
+			hairline.Size = UDim2.new(1, 0, 0, 1)
+			hairline.Position = UDim2.new(0, 0, 0, 0)
+		elseif side == "bottom" then
+			hairline.Size = UDim2.new(1, 0, 0, 1)
+			hairline.Position = UDim2.new(0, 0, 1, -1)
+		elseif side == "left" then
+			hairline.Size = UDim2.new(0, 1, 1, 0)
+			hairline.Position = UDim2.new(0, 0, 0, 0)
+		elseif side == "right" then
+			hairline.Size = UDim2.new(0, 1, 1, 0)
+			hairline.Position = UDim2.new(1, -1, 0, 0)
+		else
+			hairline.Size = UDim2.new(1, 0, 0, 1)
+			hairline.Position = UDim2.new(0, 0, 1, -1)
+		end
+	else
+		local insetLeft = typeof(sideOrInset) == "number" and sideOrInset or 12
+		hairline.Size = UDim2.new(1, -insetLeft, 0, 1)
+		hairline.Position = UDim2.new(0, insetLeft, 1, -1)
+	end
+
 	hairline.Parent = target
 	return hairline
 end
@@ -4274,7 +4297,7 @@ local Window = {}
 function Window.New(gui, options, library)
 	options = options or {}
 	local baseSize = options.Size or UDim2.fromOffset(720, 480)
-	local sidebarWidth = options.SidebarWidth or 200
+	local sidebarWidth = tonumber(options.SidebarWidth) or tonumber(options.TabWidth) or 200
 	local toggleKey = options.Keybind or Enum.KeyCode.RightControl
 	local isVisible = true
 	local isMaximized = false

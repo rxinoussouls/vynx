@@ -14,7 +14,7 @@ local Window = {}
 function Window.New(gui, options, library)
 	options = options or {}
 	local baseSize = options.Size or UDim2.fromOffset(720, 480)
-	local sidebarWidth = options.SidebarWidth or 200
+	local sidebarWidth = tonumber(options.SidebarWidth) or tonumber(options.TabWidth) or 200
 	local toggleKey = options.Keybind or Enum.KeyCode.RightControl
 	local isVisible = true
 	local isMaximized = false

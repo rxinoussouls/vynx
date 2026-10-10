@@ -60,7 +60,7 @@ function Groupbox.New(parent: GuiObject, title: string, library: any)
 		Frame = box,
 		Container = container,
 		AddToggle = function(self: any, id: string, options: any)
-			return Toggle.New(container, id, options, library.Toggles)
+			return Toggle.New(container, id, options, library)
 		end,
 		AddButton = function(self: any, options: any)
 			return Button.New(container, options)

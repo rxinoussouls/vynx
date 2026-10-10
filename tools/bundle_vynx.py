@@ -9,15 +9,17 @@ OUTPUT_FILE = os.path.join(BUILD_DIR, "bundle.luau")
 MODULES = [
     ("Core.Elements", os.path.join(SRC_DIR, "Core", "Elements.luau")),
     ("Core.Theme", os.path.join(SRC_DIR, "Core", "Theme.luau")),
+    ("Core.Tooltip", os.path.join(SRC_DIR, "Core", "Tooltip.luau")),
     ("Core.Drag", os.path.join(SRC_DIR, "Core", "Drag.luau")),
     ("Core.SaveManager", os.path.join(SRC_DIR, "Core", "SaveManager.luau")),
+    ("Components.Watermark", os.path.join(SRC_DIR, "Components", "Watermark.luau")),
     ("Components.Button", os.path.join(SRC_DIR, "Components", "Button.luau")),
+    ("Components.Colorpicker", os.path.join(SRC_DIR, "Components", "Colorpicker.luau")),
+    ("Components.Keybind", os.path.join(SRC_DIR, "Components", "Keybind.luau")),
     ("Components.Toggle", os.path.join(SRC_DIR, "Components", "Toggle.luau")),
     ("Components.Slider", os.path.join(SRC_DIR, "Components", "Slider.luau")),
     ("Components.Input", os.path.join(SRC_DIR, "Components", "Input.luau")),
     ("Components.Dropdown", os.path.join(SRC_DIR, "Components", "Dropdown.luau")),
-    ("Components.Colorpicker", os.path.join(SRC_DIR, "Components", "Colorpicker.luau")),
-    ("Components.Keybind", os.path.join(SRC_DIR, "Components", "Keybind.luau")),
     ("Components.Notification", os.path.join(SRC_DIR, "Components", "Notification.luau")),
     ("Components.Groupbox", os.path.join(SRC_DIR, "Components", "Groupbox.luau")),
     ("Components.Tab", os.path.join(SRC_DIR, "Components", "Tab.luau")),
@@ -26,7 +28,6 @@ MODULES = [
 ]
 
 def clean_code(content: str) -> str:
-    # remove leading --!strict
     lines = content.splitlines()
     filtered = []
     for line in lines:
@@ -63,8 +64,11 @@ def generate_bundle():
         # Replace requires with _require aliases
         content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Elements\)', '_require("Core.Elements")', content)
         content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Theme\)', '_require("Core.Theme")', content)
+        content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Tooltip\)', '_require("Core.Tooltip")', content)
         content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Drag\)', '_require("Core.Drag")', content)
         content = re.sub(r'require\(script\.Parent\.Parent\.Core\.SaveManager\)', '_require("Core.SaveManager")', content)
+        content = re.sub(r'require\(script\.Parent\.Elements\)', '_require("Core.Elements")', content)
+        content = re.sub(r'require\(script\.Parent\.Theme\)', '_require("Core.Theme")', content)
         content = re.sub(r'require\(script\.Parent\.Button\)', '_require("Components.Button")', content)
         content = re.sub(r'require\(script\.Parent\.Toggle\)', '_require("Components.Toggle")', content)
         content = re.sub(r'require\(script\.Parent\.Slider\)', '_require("Components.Slider")', content)
@@ -73,14 +77,17 @@ def generate_bundle():
         content = re.sub(r'require\(script\.Parent\.Colorpicker\)', '_require("Components.Colorpicker")', content)
         content = re.sub(r'require\(script\.Parent\.Keybind\)', '_require("Components.Keybind")', content)
         content = re.sub(r'require\(script\.Parent\.Notification\)', '_require("Components.Notification")', content)
+        content = re.sub(r'require\(script\.Parent\.Watermark\)', '_require("Components.Watermark")', content)
         content = re.sub(r'require\(script\.Parent\.Groupbox\)', '_require("Components.Groupbox")', content)
         content = re.sub(r'require\(script\.Parent\.Tab\)', '_require("Components.Tab")', content)
         content = re.sub(r'require\(script\.Parent\.Window\)', '_require("Components.Window")', content)
         content = re.sub(r'require\(script\.Core\.Elements\)', '_require("Core.Elements")', content)
         content = re.sub(r'require\(script\.Core\.Theme\)', '_require("Core.Theme")', content)
+        content = re.sub(r'require\(script\.Core\.Tooltip\)', '_require("Core.Tooltip")', content)
         content = re.sub(r'require\(script\.Core\.SaveManager\)', '_require("Core.SaveManager")', content)
         content = re.sub(r'require\(script\.Components\.Window\)', '_require("Components.Window")', content)
         content = re.sub(r'require\(script\.Components\.Notification\)', '_require("Components.Notification")', content)
+        content = re.sub(r'require\(script\.Components\.Watermark\)', '_require("Components.Watermark")', content)
 
         clean = clean_code(content)
         

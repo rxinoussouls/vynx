@@ -2,6 +2,7 @@
 local UserInputService = game:GetService("UserInputService")
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Tooltip = require(script.Parent.Parent.Core.Tooltip)
 
 local Slider = {}
 
@@ -12,6 +13,7 @@ export type SliderOptions = {
 	Max: number,
 	Rounding: number?,
 	Suffix: string?,
+	Tooltip: string?,
 	Callback: ((number) -> ())?,
 }
 
@@ -34,6 +36,10 @@ function Slider.New(parent: GuiObject, id: string, options: SliderOptions, regis
 		BackgroundTransparency = 1,
 		Parent = parent,
 	}) :: Frame
+
+	if options.Tooltip then
+		Tooltip.Attach(frame, options.Tooltip)
+	end
 
 	local header = Elements.Create("Frame", {
 		Size = UDim2.new(1, 0, 0, 18),

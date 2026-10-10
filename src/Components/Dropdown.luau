@@ -1,6 +1,7 @@
 --!strict
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Tooltip = require(script.Parent.Parent.Core.Tooltip)
 
 local Dropdown = {}
 
@@ -9,6 +10,7 @@ export type DropdownOptions = {
 	Values: { string },
 	Default: any?,
 	Multi: boolean?,
+	Tooltip: string?,
 	Callback: ((any) -> ())?,
 }
 
@@ -38,6 +40,10 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		ZIndex = 5,
 		Parent = parent,
 	}) :: Frame
+
+	if options.Tooltip then
+		Tooltip.Attach(frame, options.Tooltip)
+	end
 
 	local label = Elements.Create("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 18),

@@ -177,6 +177,92 @@ end
 return Theme
 end
 
+_modules['Core.Tooltip'] = function()
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Elements = _require("Core.Elements")
+local Theme = _require("Core.Theme")
+
+local Tooltip = {}
+
+local tooltipFrame: Frame? = nil
+local tooltipLabel: TextLabel? = nil
+local activeTarget: GuiObject? = nil
+local hoverTime = 0
+local isHovering = false
+
+function Tooltip.Init(gui: ScreenGui)
+	if tooltipFrame then return end
+
+	tooltipFrame = Elements.Create("Frame", {
+		Name = "VynxTooltip",
+		Size = UDim2.new(0, 0, 0, 22),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundColor3 = Theme.Get("Secondary"),
+		Visible = false,
+		ZIndex = 200,
+		Parent = gui,
+	}) :: Frame
+	Elements.Round(tooltipFrame, 4)
+	local stroke = Elements.Stroke(tooltipFrame, Theme.Get("Border"), 1, 0)
+	Theme.Register(tooltipFrame, "BackgroundColor3", "Secondary")
+	Theme.Register(stroke, "Color", "Border")
+	Elements.Padding(tooltipFrame, { Top = 3, Bottom = 3, Left = 8, Right = 8 })
+
+	tooltipLabel = Elements.Create("TextLabel", {
+		Size = UDim2.new(0, 0, 1, 0),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundTransparency = 1,
+		TextColor3 = Theme.Get("Text"),
+		TextSize = 11,
+		Font = Enum.Font.GothamMedium,
+		ZIndex = 201,
+		Parent = tooltipFrame,
+	}) :: TextLabel
+	Theme.Register(tooltipLabel, "TextColor3", "Text")
+
+	UserInputService.InputChanged:Connect(function(input: InputObject)
+		if isHovering and tooltipFrame and tooltipFrame.Visible and input.UserInputType == Enum.UserInputType.MouseMovement then
+			tooltipFrame.Position = UDim2.fromOffset(input.Position.X + 12, input.Position.Y + 12)
+		end
+	end)
+
+	RunService.RenderStepped:Connect(function(dt: number)
+		if isHovering and activeTarget and not (tooltipFrame and tooltipFrame.Visible) then
+			hoverTime += dt
+			if hoverTime >= 0.35 and tooltipFrame then
+				local mousePos = UserInputService:GetMouseLocation()
+				tooltipFrame.Position = UDim2.fromOffset(mousePos.X + 12, mousePos.Y + 12)
+				tooltipFrame.Visible = true
+			end
+		end
+	end)
+end
+
+function Tooltip.Attach(target: GuiObject, text: string)
+	target.MouseEnter:Connect(function()
+		if not tooltipFrame or not tooltipLabel then return end
+		activeTarget = target
+		hoverTime = 0
+		isHovering = true
+		tooltipLabel.Text = text
+	end)
+
+	target.MouseLeave:Connect(function()
+		if activeTarget == target then
+			isHovering = false
+			activeTarget = nil
+			hoverTime = 0
+			if tooltipFrame then
+				tooltipFrame.Visible = false
+			end
+		end
+	end)
+end
+
+return Tooltip
+end
+
 _modules['Core.Drag'] = function()
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -394,9 +480,77 @@ end
 return SaveManager
 end
 
+_modules['Components.Watermark'] = function()
+local Elements = _require("Core.Elements")
+local Theme = _require("Core.Theme")
+local Drag = _require("Core.Drag")
+
+local Watermark = {}
+
+function Watermark.New(gui: ScreenGui, defaultText: string?)
+	local frame = Elements.Create("Frame", {
+		Name = "VynxWatermark",
+		Size = UDim2.new(0, 0, 0, 26),
+		AutomaticSize = Enum.AutomaticSize.X,
+		Position = UDim2.new(0, 16, 0, 16),
+		BackgroundColor3 = Theme.Get("Secondary"),
+		ZIndex = 90,
+		Parent = gui,
+	}) :: Frame
+	Elements.Round(frame, 6)
+	local stroke = Elements.Stroke(frame, Theme.Get("Border"), 1, 0)
+	Theme.Register(frame, "BackgroundColor3", "Secondary")
+	Theme.Register(stroke, "Color", "Border")
+	Elements.Padding(frame, { Top = 4, Bottom = 4, Left = 10, Right = 10 })
+
+	-- Accent Dot
+	local dot = Elements.Create("Frame", {
+		Size = UDim2.new(0, 6, 0, 6),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 0, 0.5, 0),
+		BackgroundColor3 = Theme.Get("Accent"),
+		ZIndex = 91,
+		Parent = frame,
+	}) :: Frame
+	Elements.Round(dot, 3)
+	Theme.Register(dot, "BackgroundColor3", "Accent")
+
+	local label = Elements.Create("TextLabel", {
+		Size = UDim2.new(0, 0, 1, 0),
+		AutomaticSize = Enum.AutomaticSize.X,
+		Position = UDim2.new(0, 12, 0, 0),
+		BackgroundTransparency = 1,
+		Text = defaultText or "vynx",
+		TextColor3 = Theme.Get("Text"),
+		TextSize = 12,
+		Font = Enum.Font.GothamMedium,
+		ZIndex = 91,
+		Parent = frame,
+	}) :: TextLabel
+	Theme.Register(label, "TextColor3", "Text")
+
+	Drag.Make(frame, frame, 0.2)
+
+	local watermarkObj = {
+		Frame = frame,
+		SetText = function(self: any, text: string)
+			label.Text = text
+		end,
+		SetVisible = function(self: any, visible: boolean)
+			frame.Visible = visible
+		end,
+	}
+
+	return watermarkObj
+end
+
+return Watermark
+end
+
 _modules['Components.Button'] = function()
 local Elements = _require("Core.Elements")
 local Theme = _require("Core.Theme")
+local Tooltip = _require("Core.Tooltip")
 
 local Button = {}
 
@@ -430,6 +584,10 @@ function Button.New(parent: GuiObject, options: ButtonOptions)
 	Theme.Register(btn, "BackgroundColor3", "Surface")
 	Theme.Register(btn, "TextColor3", "Text")
 	Theme.Register(stroke, "Color", "Border")
+
+	if options.Tooltip then
+		Tooltip.Attach(btn, options.Tooltip)
+	end
 
 	local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
@@ -470,9 +628,261 @@ end
 return Button
 end
 
+_modules['Components.Colorpicker'] = function()
+local Elements = _require("Core.Elements")
+local Theme = _require("Core.Theme")
+
+local Colorpicker = {}
+
+export type ColorpickerOptions = {
+	Text: string,
+	Default: Color3?,
+	Transparency: number?,
+	Callback: ((Color3, number) -> ())?,
+}
+
+function Colorpicker.New(parent: GuiObject, id: string, options: ColorpickerOptions, registry: { [string]: any })
+	local currentColor = options.Default or Color3.fromRGB(138, 75, 255)
+	local currentAlpha = options.Transparency or 0
+	local callback = options.Callback or function() end
+	local isOpen = false
+
+	local frame = Elements.Create("Frame", {
+		Name = id .. "_Colorpicker",
+		Size = UDim2.new(1, 0, 0, 26),
+		BackgroundTransparency = 1,
+		ClipsDescendants = false,
+		ZIndex = 6,
+		Parent = parent,
+	}) :: Frame
+
+	local label = Elements.Create("TextLabel", {
+		Size = UDim2.new(1, -40, 1, 0),
+		BackgroundTransparency = 1,
+		Text = options.Text or id,
+		TextColor3 = Theme.Get("Text"),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextSize = 13,
+		Font = Enum.Font.GothamMedium,
+		ZIndex = 6,
+		Parent = frame,
+	}) :: TextLabel
+	Theme.Register(label, "TextColor3", "Text")
+
+	local previewBtn = Elements.Create("TextButton", {
+		Size = UDim2.new(0, 32, 0, 18),
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -2, 0.5, 0),
+		BackgroundColor3 = currentColor,
+		Text = "",
+		AutoButtonColor = false,
+		ZIndex = 6,
+		Parent = frame,
+	}) :: TextButton
+	Elements.Round(previewBtn, 4)
+	local previewStroke = Elements.Stroke(previewBtn, Theme.Get("Border"), 1, 0)
+	Theme.Register(previewStroke, "Color", "Border")
+
+	-- Palette Popover
+	local popover = Elements.Create("Frame", {
+		Size = UDim2.new(0, 160, 0, 110),
+		Position = UDim2.new(1, -160, 1, 4),
+		BackgroundColor3 = Theme.Get("Secondary"),
+		Visible = false,
+		ZIndex = 30,
+		Parent = previewBtn,
+	}) :: Frame
+	Elements.Round(popover, 6)
+	local popoverStroke = Elements.Stroke(popover, Theme.Get("Border"), 1, 0)
+	Theme.Register(popover, "BackgroundColor3", "Secondary")
+	Theme.Register(popoverStroke, "Color", "Border")
+	Elements.Padding(popover, 8)
+
+	-- Swatches
+	local swatches = {
+		Color3.fromRGB(255, 75, 75),
+		Color3.fromRGB(255, 150, 50),
+		Color3.fromRGB(255, 220, 50),
+		Color3.fromRGB(60, 220, 120),
+		Color3.fromRGB(50, 180, 255),
+		Color3.fromRGB(138, 75, 255),
+		Color3.fromRGB(255, 100, 200),
+		Color3.fromRGB(255, 255, 255),
+	}
+
+	local swatchGrid = Elements.Create("UIGridLayout", {
+		CellSize = UDim2.new(0, 32, 0, 24),
+		CellPadding = UDim2.new(0, 5, 0, 5),
+		Parent = popover,
+	})
+
+	if not options.Text or options.Text == "" then
+		label.Visible = false
+	end
+
+	local colorpickerObj = {
+		Frame = frame,
+		Value = currentColor,
+		Transparency = currentAlpha,
+		Callback = callback,
+		SetValue = function(self: any, newCol: Color3, newAlpha: number?)
+			self.Value = newCol
+			if newAlpha then
+				self.Transparency = newAlpha
+			end
+			previewBtn.BackgroundColor3 = newCol
+			task.spawn(self.Callback, newCol, self.Transparency)
+		end,
+	}
+
+	for _, col in ipairs(swatches) do
+		local sBtn = Elements.Create("TextButton", {
+			BackgroundColor3 = col,
+			Text = "",
+			AutoButtonColor = false,
+			ZIndex = 31,
+			Parent = popover,
+		}) :: TextButton
+		Elements.Round(sBtn, 4)
+		Elements.Stroke(sBtn, Color3.fromRGB(30, 30, 40), 1, 0)
+		sBtn.MouseButton1Click:Connect(function()
+			colorpickerObj:SetValue(col)
+		end)
+	end
+
+	previewBtn.MouseButton1Click:Connect(function()
+		isOpen = not isOpen
+		popover.Visible = isOpen
+		frame.ZIndex = isOpen and 50 or 6
+	end)
+
+	registry[id] = colorpickerObj
+	return colorpickerObj
+end
+
+return Colorpicker
+end
+
+_modules['Components.Keybind'] = function()
+local UserInputService = game:GetService("UserInputService")
+local Elements = _require("Core.Elements")
+local Theme = _require("Core.Theme")
+
+local Keybind = {}
+
+export type KeybindOptions = {
+	Text: string,
+	Default: Enum.KeyCode?,
+	Mode: ("Toggle" | "Hold" | "Always")?,
+	Callback: ((boolean) -> ())?,
+}
+
+function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, registry: { [string]: any })
+	local currentKey: Enum.KeyCode? = options.Default or Enum.KeyCode.Unknown
+	local mode = options.Mode or "Toggle"
+	local callback = options.Callback or function() end
+	local isBinding = false
+	local isHolding = false
+
+	local frame = Elements.Create("Frame", {
+		Name = id .. "_Keybind",
+		Size = UDim2.new(1, 0, 0, 26),
+		BackgroundTransparency = 1,
+		Parent = parent,
+	}) :: Frame
+
+	local label = Elements.Create("TextLabel", {
+		Size = UDim2.new(1, -90, 1, 0),
+		BackgroundTransparency = 1,
+		Text = options.Text or id,
+		TextColor3 = Theme.Get("Text"),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextSize = 13,
+		Font = Enum.Font.GothamMedium,
+		Parent = frame,
+	}) :: TextLabel
+	Theme.Register(label, "TextColor3", "Text")
+
+	local keyBtn = Elements.Create("TextButton", {
+		Size = UDim2.new(0, 80, 0, 20),
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -2, 0.5, 0),
+		BackgroundColor3 = Theme.Get("Surface"),
+		Text = currentKey and (currentKey :: Enum.KeyCode).Name or "None",
+		TextColor3 = Theme.Get("SubText"),
+		TextSize = 11,
+		Font = Enum.Font.GothamBold,
+		AutoButtonColor = false,
+		Parent = frame,
+	}) :: TextButton
+	Elements.Round(keyBtn, 4)
+	local keyStroke = Elements.Stroke(keyBtn, Theme.Get("Border"), 1, 0)
+	Theme.Register(keyBtn, "BackgroundColor3", "Surface")
+	Theme.Register(keyStroke, "Color", "Border")
+
+	if not options.Text or options.Text == "" then
+		label.Visible = false
+	end
+
+	local keybindObj = {
+		Frame = frame,
+		Value = currentKey,
+		Mode = mode,
+		Callback = callback,
+		SetValue = function(self: any, newKey: Enum.KeyCode)
+			self.Value = newKey
+			currentKey = newKey
+			keyBtn.Text = newKey and newKey.Name or "None"
+		end,
+	}
+
+	keyBtn.MouseButton1Click:Connect(function()
+		isBinding = true
+		keyBtn.Text = "..."
+		keyStroke.Color = Theme.Get("Accent")
+	end)
+
+	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
+		if isBinding then
+			if input.UserInputType == Enum.UserInputType.Keyboard then
+				isBinding = false
+				keyStroke.Color = Theme.Get("Border")
+				if input.KeyCode == Enum.KeyCode.Escape then
+					keybindObj:SetValue(Enum.KeyCode.Unknown)
+				else
+					keybindObj:SetValue(input.KeyCode)
+				end
+			end
+		elseif not gameProcessed and currentKey and input.KeyCode == currentKey then
+			if mode == "Toggle" then
+				task.spawn(keybindObj.Callback, true)
+			elseif mode == "Hold" then
+				isHolding = true
+				task.spawn(keybindObj.Callback, true)
+			end
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input: InputObject)
+		if not isBinding and currentKey and input.KeyCode == currentKey and mode == "Hold" and isHolding then
+			isHolding = false
+			task.spawn(keybindObj.Callback, false)
+		end
+	end)
+
+	registry[id] = keybindObj
+	return keybindObj
+end
+
+return Keybind
+end
+
 _modules['Components.Toggle'] = function()
 local Elements = _require("Core.Elements")
 local Theme = _require("Core.Theme")
+local Tooltip = _require("Core.Tooltip")
+local Colorpicker = _require("Components.Colorpicker")
+local Keybind = _require("Components.Keybind")
 
 local Toggle = {}
 
@@ -483,7 +893,7 @@ export type ToggleOptions = {
 	Callback: ((boolean) -> ())?,
 }
 
-function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, registry: { [string]: any })
+function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, library: any)
 	local state = options.Default or false
 	local callback = options.Callback or function() end
 
@@ -497,7 +907,7 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, regis
 	}) :: TextButton
 
 	local label = Elements.Create("TextLabel", {
-		Size = UDim2.new(1, -50, 1, 0),
+		Size = UDim2.new(1, -60, 1, 0),
 		Position = UDim2.new(0, 0, 0, 0),
 		BackgroundTransparency = 1,
 		Text = options.Text or id,
@@ -508,12 +918,35 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, regis
 	}) :: TextLabel
 	Theme.Register(label, "TextColor3", "Text")
 
-	local switchBg = Elements.Create("Frame", {
-		Size = UDim2.new(0, 36, 0, 18),
+	if options.Tooltip then
+		Tooltip.Attach(frame, options.Tooltip)
+	end
+
+	-- SubHolder on the right side for switch and attached sub-components (Colorpicker/Keybind)
+	local subHolder = Elements.Create("Frame", {
+		Size = UDim2.new(0, 0, 1, 0),
+		AutomaticSize = Enum.AutomaticSize.X,
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -2, 0.5, 0),
-		BackgroundColor3 = state and Theme.Get("Accent") or Theme.Get("Surface"),
+		BackgroundTransparency = 1,
 		Parent = frame,
+	}) :: Frame
+
+	local subLayout = Elements.Create("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0, 6),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = subHolder,
+	})
+
+	local switchBg = Elements.Create("Frame", {
+		Name = "Switch",
+		Size = UDim2.new(0, 36, 0, 18),
+		BackgroundColor3 = state and Theme.Get("Accent") or Theme.Get("Surface"),
+		LayoutOrder = 10,
+		Parent = subHolder,
 	}) :: Frame
 	Elements.Round(switchBg, 9)
 	local switchStroke = Elements.Stroke(switchBg, Theme.Get("Border"), 1, 0)
@@ -549,13 +982,27 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, regis
 			updateVisuals(newValue)
 			task.spawn(self.Callback, newValue)
 		end,
+		AddColorpicker = function(self: any, subId: string, subOptions: any)
+			local cp = Colorpicker.New(subHolder, subId, subOptions, library.Options)
+			-- Adjust sizing for inline embed
+			cp.Frame.Size = UDim2.new(0, 32, 0, 18)
+			cp.Frame.LayoutOrder = 5
+			return cp
+		end,
+		AddKeybind = function(self: any, subId: string, subOptions: any)
+			local kb = Keybind.New(subHolder, subId, subOptions, library.Options)
+			-- Adjust sizing for inline embed
+			kb.Frame.Size = UDim2.new(0, 50, 0, 18)
+			kb.Frame.LayoutOrder = 4
+			return kb
+		end,
 	}
 
 	frame.MouseButton1Click:Connect(function()
 		toggleObj:SetValue(not toggleObj.Value)
 	end)
 
-	registry[id] = toggleObj
+	library.Toggles[id] = toggleObj
 	return toggleObj
 end
 
@@ -566,6 +1013,7 @@ _modules['Components.Slider'] = function()
 local UserInputService = game:GetService("UserInputService")
 local Elements = _require("Core.Elements")
 local Theme = _require("Core.Theme")
+local Tooltip = _require("Core.Tooltip")
 
 local Slider = {}
 
@@ -576,6 +1024,7 @@ export type SliderOptions = {
 	Max: number,
 	Rounding: number?,
 	Suffix: string?,
+	Tooltip: string?,
 	Callback: ((number) -> ())?,
 }
 
@@ -598,6 +1047,10 @@ function Slider.New(parent: GuiObject, id: string, options: SliderOptions, regis
 		BackgroundTransparency = 1,
 		Parent = parent,
 	}) :: Frame
+
+	if options.Tooltip then
+		Tooltip.Attach(frame, options.Tooltip)
+	end
 
 	local header = Elements.Create("Frame", {
 		Size = UDim2.new(1, 0, 0, 18),
@@ -816,6 +1269,7 @@ end
 _modules['Components.Dropdown'] = function()
 local Elements = _require("Core.Elements")
 local Theme = _require("Core.Theme")
+local Tooltip = _require("Core.Tooltip")
 
 local Dropdown = {}
 
@@ -824,6 +1278,7 @@ export type DropdownOptions = {
 	Values: { string },
 	Default: any?,
 	Multi: boolean?,
+	Tooltip: string?,
 	Callback: ((any) -> ())?,
 }
 
@@ -853,6 +1308,10 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		ZIndex = 5,
 		Parent = parent,
 	}) :: Frame
+
+	if options.Tooltip then
+		Tooltip.Attach(frame, options.Tooltip)
+	end
 
 	local label = Elements.Create("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 18),
@@ -1029,245 +1488,6 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 end
 
 return Dropdown
-end
-
-_modules['Components.Colorpicker'] = function()
-local Elements = _require("Core.Elements")
-local Theme = _require("Core.Theme")
-
-local Colorpicker = {}
-
-export type ColorpickerOptions = {
-	Text: string,
-	Default: Color3?,
-	Transparency: number?,
-	Callback: ((Color3, number) -> ())?,
-}
-
-function Colorpicker.New(parent: GuiObject, id: string, options: ColorpickerOptions, registry: { [string]: any })
-	local currentColor = options.Default or Color3.fromRGB(138, 75, 255)
-	local currentAlpha = options.Transparency or 0
-	local callback = options.Callback or function() end
-	local isOpen = false
-
-	local frame = Elements.Create("Frame", {
-		Name = id .. "_Colorpicker",
-		Size = UDim2.new(1, 0, 0, 26),
-		BackgroundTransparency = 1,
-		ClipsDescendants = false,
-		ZIndex = 6,
-		Parent = parent,
-	}) :: Frame
-
-	local label = Elements.Create("TextLabel", {
-		Size = UDim2.new(1, -40, 1, 0),
-		BackgroundTransparency = 1,
-		Text = options.Text or id,
-		TextColor3 = Theme.Get("Text"),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextSize = 13,
-		Font = Enum.Font.GothamMedium,
-		ZIndex = 6,
-		Parent = frame,
-	}) :: TextLabel
-	Theme.Register(label, "TextColor3", "Text")
-
-	local previewBtn = Elements.Create("TextButton", {
-		Size = UDim2.new(0, 32, 0, 18),
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -2, 0.5, 0),
-		BackgroundColor3 = currentColor,
-		Text = "",
-		AutoButtonColor = false,
-		ZIndex = 6,
-		Parent = frame,
-	}) :: TextButton
-	Elements.Round(previewBtn, 4)
-	local previewStroke = Elements.Stroke(previewBtn, Theme.Get("Border"), 1, 0)
-	Theme.Register(previewStroke, "Color", "Border")
-
-	-- Palette Popover
-	local popover = Elements.Create("Frame", {
-		Size = UDim2.new(0, 160, 0, 110),
-		Position = UDim2.new(1, -160, 1, 4),
-		BackgroundColor3 = Theme.Get("Secondary"),
-		Visible = false,
-		ZIndex = 30,
-		Parent = previewBtn,
-	}) :: Frame
-	Elements.Round(popover, 6)
-	local popoverStroke = Elements.Stroke(popover, Theme.Get("Border"), 1, 0)
-	Theme.Register(popover, "BackgroundColor3", "Secondary")
-	Theme.Register(popoverStroke, "Color", "Border")
-	Elements.Padding(popover, 8)
-
-	-- Swatches
-	local swatches = {
-		Color3.fromRGB(255, 75, 75),
-		Color3.fromRGB(255, 150, 50),
-		Color3.fromRGB(255, 220, 50),
-		Color3.fromRGB(60, 220, 120),
-		Color3.fromRGB(50, 180, 255),
-		Color3.fromRGB(138, 75, 255),
-		Color3.fromRGB(255, 100, 200),
-		Color3.fromRGB(255, 255, 255),
-	}
-
-	local swatchGrid = Elements.Create("UIGridLayout", {
-		CellSize = UDim2.new(0, 32, 0, 24),
-		CellPadding = UDim2.new(0, 5, 0, 5),
-		Parent = popover,
-	})
-
-	local colorpickerObj = {
-		Value = currentColor,
-		Transparency = currentAlpha,
-		Callback = callback,
-		SetValue = function(self: any, newCol: Color3, newAlpha: number?)
-			self.Value = newCol
-			if newAlpha then
-				self.Transparency = newAlpha
-			end
-			previewBtn.BackgroundColor3 = newCol
-			task.spawn(self.Callback, newCol, self.Transparency)
-		end,
-	}
-
-	for _, col in ipairs(swatches) do
-		local sBtn = Elements.Create("TextButton", {
-			BackgroundColor3 = col,
-			Text = "",
-			AutoButtonColor = false,
-			ZIndex = 31,
-			Parent = popover,
-		}) :: TextButton
-		Elements.Round(sBtn, 4)
-		Elements.Stroke(sBtn, Color3.fromRGB(30, 30, 40), 1, 0)
-		sBtn.MouseButton1Click:Connect(function()
-			colorpickerObj:SetValue(col)
-		end)
-	end
-
-	previewBtn.MouseButton1Click:Connect(function()
-		isOpen = not isOpen
-		popover.Visible = isOpen
-		frame.ZIndex = isOpen and 50 or 6
-	end)
-
-	registry[id] = colorpickerObj
-	return colorpickerObj
-end
-
-return Colorpicker
-end
-
-_modules['Components.Keybind'] = function()
-local UserInputService = game:GetService("UserInputService")
-local Elements = _require("Core.Elements")
-local Theme = _require("Core.Theme")
-
-local Keybind = {}
-
-export type KeybindOptions = {
-	Text: string,
-	Default: Enum.KeyCode?,
-	Mode: ("Toggle" | "Hold" | "Always")?,
-	Callback: ((boolean) -> ())?,
-}
-
-function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, registry: { [string]: any })
-	local currentKey: Enum.KeyCode? = options.Default or Enum.KeyCode.Unknown
-	local mode = options.Mode or "Toggle"
-	local callback = options.Callback or function() end
-	local isBinding = false
-	local isHolding = false
-
-	local frame = Elements.Create("Frame", {
-		Name = id .. "_Keybind",
-		Size = UDim2.new(1, 0, 0, 26),
-		BackgroundTransparency = 1,
-		Parent = parent,
-	}) :: Frame
-
-	local label = Elements.Create("TextLabel", {
-		Size = UDim2.new(1, -90, 1, 0),
-		BackgroundTransparency = 1,
-		Text = options.Text or id,
-		TextColor3 = Theme.Get("Text"),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextSize = 13,
-		Font = Enum.Font.GothamMedium,
-		Parent = frame,
-	}) :: TextLabel
-	Theme.Register(label, "TextColor3", "Text")
-
-	local keyBtn = Elements.Create("TextButton", {
-		Size = UDim2.new(0, 80, 0, 20),
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -2, 0.5, 0),
-		BackgroundColor3 = Theme.Get("Surface"),
-		Text = currentKey and (currentKey :: Enum.KeyCode).Name or "None",
-		TextColor3 = Theme.Get("SubText"),
-		TextSize = 11,
-		Font = Enum.Font.GothamBold,
-		AutoButtonColor = false,
-		Parent = frame,
-	}) :: TextButton
-	Elements.Round(keyBtn, 4)
-	local keyStroke = Elements.Stroke(keyBtn, Theme.Get("Border"), 1, 0)
-	Theme.Register(keyBtn, "BackgroundColor3", "Surface")
-	Theme.Register(keyStroke, "Color", "Border")
-
-	local keybindObj = {
-		Value = currentKey,
-		Mode = mode,
-		Callback = callback,
-		SetValue = function(self: any, newKey: Enum.KeyCode)
-			self.Value = newKey
-			currentKey = newKey
-			keyBtn.Text = newKey and newKey.Name or "None"
-		end,
-	}
-
-	keyBtn.MouseButton1Click:Connect(function()
-		isBinding = true
-		keyBtn.Text = "..."
-		keyStroke.Color = Theme.Get("Accent")
-	end)
-
-	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
-		if isBinding then
-			if input.UserInputType == Enum.UserInputType.Keyboard then
-				isBinding = false
-				keyStroke.Color = Theme.Get("Border")
-				if input.KeyCode == Enum.KeyCode.Escape then
-					keybindObj:SetValue(Enum.KeyCode.Unknown)
-				else
-					keybindObj:SetValue(input.KeyCode)
-				end
-			end
-		elseif not gameProcessed and currentKey and input.KeyCode == currentKey then
-			if mode == "Toggle" then
-				task.spawn(keybindObj.Callback, true)
-			elseif mode == "Hold" then
-				isHolding = true
-				task.spawn(keybindObj.Callback, true)
-			end
-		end
-	end)
-
-	UserInputService.InputEnded:Connect(function(input: InputObject)
-		if not isBinding and currentKey and input.KeyCode == currentKey and mode == "Hold" and isHolding then
-			isHolding = false
-			task.spawn(keybindObj.Callback, false)
-		end
-	end)
-
-	registry[id] = keybindObj
-	return keybindObj
-end
-
-return Keybind
 end
 
 _modules['Components.Notification'] = function()
@@ -1453,7 +1673,7 @@ function Groupbox.New(parent: GuiObject, title: string, library: any)
 		Frame = box,
 		Container = container,
 		AddToggle = function(self: any, id: string, options: any)
-			return Toggle.New(container, id, options, library.Toggles)
+			return Toggle.New(container, id, options, library)
 		end,
 		AddButton = function(self: any, options: any)
 			return Button.New(container, options)
@@ -1804,9 +2024,11 @@ local CoreGui = game:GetService("CoreGui")
 
 local Elements = _require("Core.Elements")
 local Theme = _require("Core.Theme")
+local Tooltip = _require("Core.Tooltip")
 local SaveManager = _require("Core.SaveManager")
 local Window = _require("Components.Window")
 local Notification = _require("Components.Notification")
+local Watermark = _require("Components.Watermark")
 
 local Library = {
 	Toggles = {} :: { [string]: any },
@@ -1815,6 +2037,8 @@ local Library = {
 	SaveManager = SaveManager,
 	ScreenGui = nil :: ScreenGui?,
 	ActiveWindow = nil :: any,
+	ActiveWatermark = nil :: any,
+	UnloadSignals = {} :: { () -> () },
 }
 
 SaveManager:SetLibrary(Library)
@@ -1844,6 +2068,7 @@ function Library:InitGui(): ScreenGui
 
 	self.ScreenGui = gui
 	Notification.Init(gui)
+	Tooltip.Init(gui)
 	return gui
 end
 
@@ -1861,17 +2086,44 @@ function Library:Notify(info: { Title: string?, Content: string, Duration: numbe
 	Notification.Show(info)
 end
 
+function Library:SetWatermark(text: string)
+	local gui = self:InitGui()
+	if not self.ActiveWatermark then
+		self.ActiveWatermark = Watermark.New(gui, text)
+	else
+		self.ActiveWatermark:SetText(text)
+	end
+	return self.ActiveWatermark
+end
+
+function Library:SetWatermarkVisibility(visible: boolean)
+	if self.ActiveWatermark then
+		self.ActiveWatermark:SetVisible(visible)
+	end
+end
+
 function Library:SetTheme(nameOrPalette: any)
 	Theme.SetTheme(nameOrPalette)
 end
 
+function Library:OnUnload(callback: () -> ())
+	table.insert(self.UnloadSignals, callback)
+end
+
 function Library:Unload()
+	for _, cb in ipairs(self.UnloadSignals) do
+		task.spawn(cb)
+	end
+	table.clear(self.UnloadSignals)
+
 	if self.ScreenGui then
 		self.ScreenGui:Destroy()
 		self.ScreenGui = nil
 	end
 	table.clear(self.Toggles)
 	table.clear(self.Options)
+	self.ActiveWatermark = nil
+	self.ActiveWindow = nil
 end
 
 return Library

@@ -1,6 +1,9 @@
 --!strict
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Tooltip = require(script.Parent.Parent.Core.Tooltip)
+local Colorpicker = require(script.Parent.Colorpicker)
+local Keybind = require(script.Parent.Keybind)
 
 local Toggle = {}
 
@@ -11,7 +14,7 @@ export type ToggleOptions = {
 	Callback: ((boolean) -> ())?,
 }
 
-function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, registry: { [string]: any })
+function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, library: any)
 	local state = options.Default or false
 	local callback = options.Callback or function() end
 
@@ -25,7 +28,7 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, regis
 	}) :: TextButton
 
 	local label = Elements.Create("TextLabel", {
-		Size = UDim2.new(1, -50, 1, 0),
+		Size = UDim2.new(1, -60, 1, 0),
 		Position = UDim2.new(0, 0, 0, 0),
 		BackgroundTransparency = 1,
 		Text = options.Text or id,
@@ -36,12 +39,35 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, regis
 	}) :: TextLabel
 	Theme.Register(label, "TextColor3", "Text")
 
-	local switchBg = Elements.Create("Frame", {
-		Size = UDim2.new(0, 36, 0, 18),
+	if options.Tooltip then
+		Tooltip.Attach(frame, options.Tooltip)
+	end
+
+	-- SubHolder on the right side for switch and attached sub-components (Colorpicker/Keybind)
+	local subHolder = Elements.Create("Frame", {
+		Size = UDim2.new(0, 0, 1, 0),
+		AutomaticSize = Enum.AutomaticSize.X,
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -2, 0.5, 0),
-		BackgroundColor3 = state and Theme.Get("Accent") or Theme.Get("Surface"),
+		BackgroundTransparency = 1,
 		Parent = frame,
+	}) :: Frame
+
+	local subLayout = Elements.Create("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0, 6),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = subHolder,
+	})
+
+	local switchBg = Elements.Create("Frame", {
+		Name = "Switch",
+		Size = UDim2.new(0, 36, 0, 18),
+		BackgroundColor3 = state and Theme.Get("Accent") or Theme.Get("Surface"),
+		LayoutOrder = 10,
+		Parent = subHolder,
 	}) :: Frame
 	Elements.Round(switchBg, 9)
 	local switchStroke = Elements.Stroke(switchBg, Theme.Get("Border"), 1, 0)
@@ -77,13 +103,27 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, regis
 			updateVisuals(newValue)
 			task.spawn(self.Callback, newValue)
 		end,
+		AddColorpicker = function(self: any, subId: string, subOptions: any)
+			local cp = Colorpicker.New(subHolder, subId, subOptions, library.Options)
+			-- Adjust sizing for inline embed
+			cp.Frame.Size = UDim2.new(0, 32, 0, 18)
+			cp.Frame.LayoutOrder = 5
+			return cp
+		end,
+		AddKeybind = function(self: any, subId: string, subOptions: any)
+			local kb = Keybind.New(subHolder, subId, subOptions, library.Options)
+			-- Adjust sizing for inline embed
+			kb.Frame.Size = UDim2.new(0, 50, 0, 18)
+			kb.Frame.LayoutOrder = 4
+			return kb
+		end,
 	}
 
 	frame.MouseButton1Click:Connect(function()
 		toggleObj:SetValue(not toggleObj.Value)
 	end)
 
-	registry[id] = toggleObj
+	library.Toggles[id] = toggleObj
 	return toggleObj
 end
 

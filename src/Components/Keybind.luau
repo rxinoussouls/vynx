@@ -55,7 +55,12 @@ function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, reg
 	Theme.Register(keyBtn, "BackgroundColor3", "Surface")
 	Theme.Register(keyStroke, "Color", "Border")
 
+	if not options.Text or options.Text == "" then
+		label.Visible = false
+	end
+
 	local keybindObj = {
+		Frame = frame,
 		Value = currentKey,
 		Mode = mode,
 		Callback = callback,

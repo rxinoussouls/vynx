@@ -1,6 +1,7 @@
 --!strict
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Tooltip = require(script.Parent.Parent.Core.Tooltip)
 
 local Button = {}
 
@@ -34,6 +35,10 @@ function Button.New(parent: GuiObject, options: ButtonOptions)
 	Theme.Register(btn, "BackgroundColor3", "Surface")
 	Theme.Register(btn, "TextColor3", "Text")
 	Theme.Register(stroke, "Color", "Border")
+
+	if options.Tooltip then
+		Tooltip.Attach(btn, options.Tooltip)
+	end
 
 	local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 

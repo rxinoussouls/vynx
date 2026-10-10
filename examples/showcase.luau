@@ -2,8 +2,7 @@
 --[[
     Vynx UI Library - Standalone Showcase Script
     Usage:
-        local Library = loadstring(game:HttpGet(".../bundle.luau"))()
-        -- Or execute directly in Studio / Executor
+        local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/<user>/vynx/main/build/bundle.luau"))()
 ]]--
 
 local Library = loadfile and loadfile("C:/Users/Admin/.gemini/antigravity/scratch/vynx/build/bundle.luau")()
@@ -12,7 +11,10 @@ if not Library then
     Library = require(script.Parent.Parent.src)
 end
 
--- 1. Create Window
+-- 1. Initialize Watermark
+Library:SetWatermark("vynx | universal | 60 fps | 28 ms")
+
+-- 2. Create Window
 local Window = Library:CreateWindow({
     Title = "vynx",
     SubTitle = "v1.0.0 | universal",
@@ -21,16 +23,26 @@ local Window = Library:CreateWindow({
     Keybind = Enum.KeyCode.RightControl,
 })
 
--- 2. Main Tab
+-- 3. Main Tab
 local MainTab = Window:AddTab("Main")
 
 local CombatBox = MainTab:AddLeftGroupbox("Combat & Automation")
 
-CombatBox:AddToggle("AimbotToggle", {
+local aimbotToggle = CombatBox:AddToggle("AimbotToggle", {
     Text = "Silent Aim",
     Default = false,
+    Tooltip = "Automatically redirects projectiles toward enemy hitboxes",
     Callback = function(val: boolean)
         print("[Vynx] Silent Aim:", val)
+    end,
+})
+
+-- Attach inline Keybind to Silent Aim toggle
+aimbotToggle:AddKeybind("AimbotKey", {
+    Default = Enum.KeyCode.V,
+    Mode = "Toggle",
+    Callback = function()
+        print("[Vynx] Aimbot key toggled!")
     end,
 })
 
@@ -41,6 +53,7 @@ CombatBox:AddSlider("FOVRadius", {
     Max = 360,
     Rounding = 0,
     Suffix = " px",
+    Tooltip = "Radius of targeting circle in pixels",
     Callback = function(val: number)
         print("[Vynx] FOV Radius set to:", val)
     end,
@@ -50,6 +63,7 @@ CombatBox:AddDropdown("HitPart", {
     Text = "Target Hitbox",
     Values = { "Head", "UpperTorso", "HumanoidRootPart" },
     Default = "Head",
+    Tooltip = "Body part prioritized by aimbot target selector",
     Callback = function(part: string)
         print("[Vynx] Hit part set to:", part)
     end,
@@ -57,6 +71,7 @@ CombatBox:AddDropdown("HitPart", {
 
 CombatBox:AddButton({
     Text = "Trigger Test Notification",
+    Tooltip = "Spawns a floating notification in the bottom right corner",
     Func = function()
         Library:Notify({
             Title = "Combat System",
@@ -97,21 +112,22 @@ MovementBox:AddKeybind("FlyKeybind", {
     end,
 })
 
--- 3. Visuals Tab
+-- 4. Visuals Tab
 local VisualsTab = Window:AddTab("Visuals")
 
 local ESPBox = VisualsTab:AddLeftGroupbox("ESP Settings")
 
-ESPBox:AddToggle("ESPBoxes", {
+local espBoxToggle = ESPBox:AddToggle("ESPBoxes", {
     Text = "2D Boxes",
     Default = true,
+    Tooltip = "Renders 2D bounding boxes around enemy players",
     Callback = function(val: boolean)
         print("[Vynx] ESP Boxes:", val)
     end,
 })
 
-ESPBox:AddColorpicker("BoxColor", {
-    Text = "Box Color",
+-- Attach inline Colorpicker to ESPBoxes toggle!
+espBoxToggle:AddColorpicker("BoxColor", {
     Default = Color3.fromRGB(138, 75, 255),
     Callback = function(col: Color3)
         print("[Vynx] ESP Box Color changed:", col)
@@ -145,7 +161,7 @@ WorldBox:AddInput("CustomSkyboxId", {
     end,
 })
 
--- 4. Settings Tab
+-- 5. Settings Tab
 local SettingsTab = Window:AddTab("Settings")
 
 local ThemeBox = SettingsTab:AddLeftGroupbox("Interface & Themes")
@@ -154,8 +170,19 @@ ThemeBox:AddDropdown("ThemeSelect", {
     Text = "Color Theme",
     Values = { "Obsidian", "Cyberpunk", "Emerald", "Monochrome" },
     Default = "Obsidian",
+    Tooltip = "Dynamically switches theme palette with live tweens",
     Callback = function(themeName: string)
         Library:SetTheme(themeName)
+    end,
+})
+
+ThemeBox:AddButton({
+    Text = "Toggle Watermark",
+    Func = function()
+        if Library.ActiveWatermark then
+            local isVis = Library.ActiveWatermark.Frame.Visible
+            Library:SetWatermarkVisibility(not isVis)
+        end
     end,
 })
 
@@ -169,6 +196,11 @@ ThemeBox:AddButton({
 
 -- Build SaveManager Config Section
 Library.SaveManager:BuildConfigSection(SettingsTab)
+
+-- Cleanup listener
+Library:OnUnload(function()
+    print("[Vynx] Custom unload listener cleaned up.")
+end)
 
 -- Welcome Notification
 Library:Notify({

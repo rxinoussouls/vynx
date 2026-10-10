@@ -86,7 +86,12 @@ function Colorpicker.New(parent: GuiObject, id: string, options: ColorpickerOpti
 		Parent = popover,
 	})
 
+	if not options.Text or options.Text == "" then
+		label.Visible = false
+	end
+
 	local colorpickerObj = {
+		Frame = frame,
 		Value = currentColor,
 		Transparency = currentAlpha,
 		Callback = callback,

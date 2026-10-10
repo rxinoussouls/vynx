@@ -3,9 +3,11 @@ local CoreGui = game:GetService("CoreGui")
 
 local Elements = require(script.Core.Elements)
 local Theme = require(script.Core.Theme)
+local Tooltip = require(script.Core.Tooltip)
 local SaveManager = require(script.Core.SaveManager)
 local Window = require(script.Components.Window)
 local Notification = require(script.Components.Notification)
+local Watermark = require(script.Components.Watermark)
 
 local Library = {
 	Toggles = {} :: { [string]: any },
@@ -14,6 +16,8 @@ local Library = {
 	SaveManager = SaveManager,
 	ScreenGui = nil :: ScreenGui?,
 	ActiveWindow = nil :: any,
+	ActiveWatermark = nil :: any,
+	UnloadSignals = {} :: { () -> () },
 }
 
 SaveManager:SetLibrary(Library)
@@ -43,6 +47,7 @@ function Library:InitGui(): ScreenGui
 
 	self.ScreenGui = gui
 	Notification.Init(gui)
+	Tooltip.Init(gui)
 	return gui
 end
 
@@ -60,17 +65,44 @@ function Library:Notify(info: { Title: string?, Content: string, Duration: numbe
 	Notification.Show(info)
 end
 
+function Library:SetWatermark(text: string)
+	local gui = self:InitGui()
+	if not self.ActiveWatermark then
+		self.ActiveWatermark = Watermark.New(gui, text)
+	else
+		self.ActiveWatermark:SetText(text)
+	end
+	return self.ActiveWatermark
+end
+
+function Library:SetWatermarkVisibility(visible: boolean)
+	if self.ActiveWatermark then
+		self.ActiveWatermark:SetVisible(visible)
+	end
+end
+
 function Library:SetTheme(nameOrPalette: any)
 	Theme.SetTheme(nameOrPalette)
 end
 
+function Library:OnUnload(callback: () -> ())
+	table.insert(self.UnloadSignals, callback)
+end
+
 function Library:Unload()
+	for _, cb in ipairs(self.UnloadSignals) do
+		task.spawn(cb)
+	end
+	table.clear(self.UnloadSignals)
+
 	if self.ScreenGui then
 		self.ScreenGui:Destroy()
 		self.ScreenGui = nil
 	end
 	table.clear(self.Toggles)
 	table.clear(self.Options)
+	self.ActiveWatermark = nil
+	self.ActiveWindow = nil
 end
 
 return Library

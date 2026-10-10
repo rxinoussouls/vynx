@@ -1,30 +1,31 @@
 local TweenService = game:GetService("TweenService")
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Motion = require(script.Parent.Parent.Core.Motion)
 
 local Notification = {}
 
 local holder = nil
 local activeQueue = {}
-local MAX_NOTIFICATIONS = 5
+local MAX_NOTIFICATIONS = 4
 
 function Notification.Init(gui)
 	if holder and holder.Parent then return end
 
 	holder = Elements.Create("Frame", {
-		Name = "VynxNotificationHolder",
-		Size = UDim2.new(0, 280, 1, -20),
-		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(1, -20, 1, -10),
+		Name = "VynxNotificationCenter",
+		Size = UDim2.new(0, 320, 1, -40),
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -20, 0, 20),
 		BackgroundTransparency = 1,
-		ZIndex = 800,
+		ZIndex = 1200,
 		Parent = gui,
 	})
 
 	local layout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
-		VerticalAlignment = Enum.VerticalAlignment.Bottom,
-		Padding = UDim.new(0, 8),
+		VerticalAlignment = Enum.VerticalAlignment.Top,
+		Padding = UDim.new(0, 10),
 		Parent = holder,
 	})
 end
@@ -39,14 +40,14 @@ function Notification.Show(info)
 		end
 	end
 
-	local duration = info.Duration or 3.5
+	local duration = info.Duration or 4.0
 	local nType = info.Type or "Info"
 
 	local typeColors = {
 		Info = Theme.Get("Accent"),
-		Success = Color3.fromRGB(46, 213, 115),
-		Warn = Color3.fromRGB(255, 171, 0),
-		Error = Color3.fromRGB(255, 75, 75),
+		Success = Theme.Get("Success"),
+		Warn = Theme.Get("Warning"),
+		Error = Theme.Get("Danger"),
 	}
 	local typeColor = typeColors[nType] or Theme.Get("Accent")
 
@@ -61,19 +62,20 @@ function Notification.Show(info)
 	table.insert(activeQueue, wrapper)
 
 	local toast = Elements.Create("Frame", {
-		Name = "Toast",
+		Name = "ToastCard",
 		Size = UDim2.new(1, 0, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundColor3 = Theme.Get("Secondary"),
-		Position = UDim2.new(1, 300, 0, 0),
-		ZIndex = 801,
+		BackgroundColor3 = Theme.Get("FormCard"),
+		Position = UDim2.new(1, 340, 0, 0),
+		ZIndex = 1201,
 		Parent = wrapper,
 	})
-	Elements.Round(toast, 6)
-	local stroke = Elements.Stroke(toast, Theme.Get("Border"), 1, 0)
-	Theme.Register(toast, "BackgroundColor3", "Secondary")
-	Theme.Register(stroke, "Color", "Border")
-	Elements.Padding(toast, { Top = 8, Bottom = 10, Left = 12, Right = 12 })
+	Elements.Round(toast, 10)
+	local stroke = Elements.Stroke(toast, Theme.Get("Hairline"), 1, 0)
+	Theme.Register(toast, "BackgroundColor3", "FormCard")
+	Theme.Register(stroke, "Color", "Hairline")
+	Elements.Padding(toast, { Top = 10, Bottom = 12, Left = 14, Right = 14 })
+	Elements.Shadow(toast, 3, 10, 0.5)
 
 	local contentLayout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
@@ -81,51 +83,75 @@ function Notification.Show(info)
 		Parent = toast,
 	})
 
-	local titleLabel = Elements.Create("TextLabel", {
-		Size = UDim2.new(1, 0, 0, 16),
+	-- Header Row (Icon/Type + Title + Dismiss)
+	local header = Elements.Create("Frame", {
+		Name = "ToastHeader",
+		Size = UDim2.new(1, 0, 0, 18),
 		BackgroundTransparency = 1,
-		Text = info.Title or nType,
-		TextColor3 = typeColor,
-		TextSize = 13,
-		Font = Enum.Font.GothamBold,
-		TextXAlignment = Enum.TextXAlignment.Left,
 		LayoutOrder = 1,
-		ZIndex = 802,
 		Parent = toast,
 	})
 
+	local dot = Elements.Create("Frame", {
+		Size = UDim2.fromOffset(8, 8),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 0, 0.5, 0),
+		BackgroundColor3 = typeColor,
+		Parent = header,
+	})
+	Elements.Round(dot, 4)
+
+	local titleLabel = Elements.Create("TextLabel", {
+		Size = UDim2.new(1, -20, 1, 0),
+		Position = UDim2.new(0, 14, 0, 0),
+		BackgroundTransparency = 1,
+		Text = info.Title or nType,
+		TextColor3 = Theme.Get("Text"),
+		TextSize = Theme.Typography.RowTitle.Size,
+		Font = Theme.Typography.RowTitle.Font,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = header,
+	})
+	Theme.Register(titleLabel, "TextColor3", "Text")
+
 	local contentLabel = Elements.Create("TextLabel", {
+		Name = "ToastBody",
 		Size = UDim2.new(1, 0, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
-		Text = info.Content,
-		TextColor3 = Theme.Get("Text"),
-		TextSize = 12,
-		Font = Enum.Font.Gotham,
+		Text = info.Content or info.Text or "",
+		TextColor3 = Theme.Get("SecondaryText"),
+		TextSize = Theme.Typography.Subtitle.Size,
+		Font = Theme.Typography.Subtitle.Font,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextWrapped = true,
 		LayoutOrder = 2,
-		ZIndex = 802,
+		ZIndex = 1202,
 		Parent = toast,
 	})
-	Theme.Register(contentLabel, "TextColor3", "Text")
+	Theme.Register(contentLabel, "TextColor3", "SecondaryText")
 
 	local barBg = Elements.Create("Frame", {
+		Name = "ProgressBarBg",
 		Size = UDim2.new(1, 0, 0, 2),
-		BackgroundColor3 = Theme.Get("Surface"),
+		BackgroundColor3 = Theme.Get("ControlFill"),
 		LayoutOrder = 3,
-		ZIndex = 802,
+		ZIndex = 1202,
 		Parent = toast,
 	})
+	Elements.Round(barBg, 1)
 
 	local progress = Elements.Create("Frame", {
+		Name = "ProgressBar",
 		Size = UDim2.new(1, 0, 1, 0),
 		BackgroundColor3 = typeColor,
-		ZIndex = 803,
+		ZIndex = 1203,
 		Parent = barBg,
 	})
+	Elements.Round(progress, 1)
 
-	Elements.Tween(toast, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+	-- Slide In animation
+	Elements.Tween(toast, TweenInfo.new(Motion.Duration.Slow, Motion.Easing.QuintOut), {
 		Position = UDim2.new(0, 0, 0, 0),
 	})
 
@@ -150,8 +176,8 @@ function Notification.Show(info)
 		end
 
 		if wrapper.Parent then
-			local outTween = Elements.Tween(toast, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-				Position = UDim2.new(1, 300, 0, 0),
+			local outTween = Elements.Tween(toast, TweenInfo.new(Motion.Duration.Base, Motion.Easing.QuadIn), {
+				Position = UDim2.new(1, 340, 0, 0),
 			})
 			outTween.Completed:Connect(function()
 				local idx = table.find(activeQueue, wrapper)

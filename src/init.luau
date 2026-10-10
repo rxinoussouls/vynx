@@ -107,6 +107,10 @@ function Library:SetTheme(nameOrPalette)
 	Theme.SetTheme(nameOrPalette)
 end
 
+function Library:SetAccent(accentName)
+	Theme.SetAccent(accentName)
+end
+
 function Library:OnUnload(callback)
 	table.insert(self.UnloadSignals, callback)
 end

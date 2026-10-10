@@ -79,6 +79,67 @@ function Elements.Gradient(target, colors, rotation, transparency)
 	return grad
 end
 
+function Elements.Shadow(target, radius, opacity)
+	local shadowHolder = Instance.new("Frame")
+	shadowHolder.Name = "ShadowHolder"
+	shadowHolder.Size = UDim2.new(1, 16, 1, 16)
+	shadowHolder.Position = UDim2.new(0, -8, 0, -4)
+	shadowHolder.BackgroundTransparency = 1
+	shadowHolder.ZIndex = math.max(1, (target.ZIndex or 2) - 1)
+	shadowHolder.Parent = target.Parent
+
+	-- 3-layer stacked soft shadow without external images
+	for i = 1, 3 do
+		local layer = Instance.new("Frame")
+		layer.Name = "ShadowLayer" .. i
+		layer.Size = UDim2.new(1, i * 4, 1, i * 4)
+		layer.Position = UDim2.new(0.5, 0, 0.5, i * 2)
+		layer.AnchorPoint = Vector2.new(0.5, 0.5)
+		layer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		layer.BackgroundTransparency = (opacity or 0.7) + (i * 0.08)
+		layer.BorderSizePixel = 0
+		layer.ZIndex = shadowHolder.ZIndex
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, (radius or 12) + i * 2)
+		corner.Parent = layer
+		layer.Parent = shadowHolder
+	end
+
+	target:GetPropertyChangedSignal("Visible"):Connect(function()
+		shadowHolder.Visible = target.Visible
+	end)
+	target:GetPropertyChangedSignal("Position"):Connect(function()
+		shadowHolder.Position = UDim2.new(
+			target.Position.X.Scale,
+			target.Position.X.Offset - 8,
+			target.Position.Y.Scale,
+			target.Position.Y.Offset - 4
+		)
+	end)
+	target:GetPropertyChangedSignal("Size"):Connect(function()
+		shadowHolder.Size = UDim2.new(target.Size.X.Scale, target.Size.X.Offset + 16, target.Size.Y.Scale, target.Size.Y.Offset + 16)
+	end)
+
+	target.Destroying:Connect(function()
+		shadowHolder:Destroy()
+	end)
+
+	return shadowHolder
+end
+
+function Elements.Hairline(target, insetLeft)
+	local hairline = Instance.new("Frame")
+	hairline.Name = "Hairline"
+	hairline.Size = UDim2.new(1, -(insetLeft or 12), 0, 1)
+	hairline.Position = UDim2.new(0, insetLeft or 12, 1, -1)
+	hairline.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	hairline.BackgroundTransparency = 0.92
+	hairline.BorderSizePixel = 0
+	hairline.ZIndex = (target.ZIndex or 2) + 1
+	hairline.Parent = target
+	return hairline
+end
+
 function Elements.Tween(target, info, properties)
 	local tween = TweenService:Create(target, info, properties)
 	tween:Play()

@@ -1,214 +1,214 @@
 --!strict
 --[[
-    Vynx UI Library - Standalone Showcase Script
+    Vynx UI Library - macOS Sequoia Edition Showcase Script
     Usage:
         local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/rxinoussouls/vynx/main/build/bundle.luau"))()
 ]]--
 
 local Library = loadfile and loadfile("C:/Users/Admin/.gemini/antigravity/scratch/vynx/build/bundle.luau")()
 if not Library then
-    -- Fallback for relative requires in Studio
     Library = require(script.Parent.Parent.src)
 end
 
--- 1. Initialize Watermark
-Library:SetWatermark("vynx | universal | 60 fps | 28 ms")
+-- 1. Initialize Status Watermark
+Library:SetWatermark("vynx | macOS Sequoia | 60 fps | 24 ms")
 
--- 2. Create Window
+-- 2. Create Window (macOS Sequoia Settings window)
 local Window = Library:CreateWindow({
-    Title = "vynx",
-    SubTitle = "v1.0.0 | universal",
-    Size = UDim2.fromOffset(600, 420),
-    TabWidth = 140,
+    Title = "Settings",
+    Size = UDim2.fromOffset(720, 480),
+    SidebarWidth = 200,
+    Theme = "Dark",
+    Accent = "Blue",
     Keybind = Enum.KeyCode.RightControl,
+    Dropshadow = true,
+    Resizable = true,
+    Searchable = true,
 })
 
--- 3. Main Tab
-local MainTab = Window:AddTab("Main")
+-- 3. Section: GENERAL
+local GeneralSec = Window:AddSection("General")
 
-local CombatBox = MainTab:AddLeftGroupbox("Combat & Automation")
+local FeaturesTab = GeneralSec:AddTab({
+    Title = "Features",
+    Icon = "settings",
+    Selected = true,
+})
 
-local aimbotToggle = CombatBox:AddToggle("AimbotToggle", {
+-- PageSection 1: Automation
+local AutoSection = FeaturesTab:AddPageSection({
+    Title = "AUTOMATION",
+    Subtitle = "Core targeting and automated weapon routines",
+})
+local AutoForm = AutoSection:AddForm()
+
+local silentAimToggle = AutoForm:AddToggle("SilentAim", {
     Text = "Silent Aim",
+    Subtitle = "Redirects bullet trajectories directly to priority bones",
     Default = false,
-    Tooltip = "Automatically redirects projectiles toward enemy hitboxes",
-    Callback = function(val: boolean)
+    Tooltip = "High precision client-side raycast override",
+    Callback = function(val)
         print("[Vynx] Silent Aim:", val)
     end,
 })
 
--- Attach inline Keybind to Silent Aim toggle
-aimbotToggle:AddKeybind("AimbotKey", {
-    Default = Enum.KeyCode.V,
+silentAimToggle:AddKeybind("AimKey", {
+    Default = Enum.KeyCode.E,
     Mode = "Toggle",
-    Callback = function()
-        print("[Vynx] Aimbot key toggled!")
+    Callback = function(active)
+        print("[Vynx] Silent Aim key triggered:", active)
     end,
 })
 
-CombatBox:AddSlider("FOVRadius", {
-    Text = "FOV Radius",
+silentAimToggle:AddColorpicker("AimColor", {
+    Default = Color3.fromRGB(10, 132, 255),
+    Callback = function(col)
+        print("[Vynx] Silent Aim indicator color:", col)
+    end,
+})
+
+AutoForm:AddSlider("FOVRadius", {
+    Text = "Field of View",
+    Subtitle = "Max targeting angle in degrees (double-click label to type)",
     Default = 90,
     Min = 10,
     Max = 360,
     Rounding = 0,
-    Suffix = " px",
-    Tooltip = "Radius of targeting circle in pixels",
-    Callback = function(val: number)
-        print("[Vynx] FOV Radius set to:", val)
+    Suffix = "°",
+    Callback = function(val)
+        print("[Vynx] FOV set to:", val)
     end,
 })
 
-CombatBox:AddDropdown("HitPart", {
-    Text = "Target Hitbox",
-    Values = { "Head", "UpperTorso", "HumanoidRootPart" },
+AutoForm:AddDropdown("HitPart", {
+    Text = "Target Priority",
+    Subtitle = "Preferred bone structure for target selection",
+    Values = { "Head", "UpperTorso", "HumanoidRootPart", "Closest Bone" },
     Default = "Head",
-    Tooltip = "Body part prioritized by aimbot target selector",
-    Callback = function(part: string)
-        print("[Vynx] Hit part set to:", part)
+    Callback = function(val)
+        print("[Vynx] Target Bone:", val)
     end,
 })
 
-CombatBox:AddButton({
-    Text = "Trigger Test Notification",
-    Tooltip = "Spawns a floating notification in the bottom right corner",
-    Func = function()
-        Library:Notify({
-            Title = "Combat System",
-            Content = "Target locked successfully!",
-            Duration = 3,
-        })
-    end,
+-- PageSection 2: Movement & Physics
+local MoveSection = FeaturesTab:AddPageSection({
+    Title = "MOVEMENT & LOCOMOTION",
+    Subtitle = "Local humanoid physics modification",
 })
+local MoveForm = MoveSection:AddForm()
 
-local MovementBox = MainTab:AddRightGroupbox("Movement")
-
-local speedToggle = MovementBox:AddToggle("SpeedToggle", {
+local speedToggle = MoveForm:AddToggle("SpeedMultiplier", {
     Text = "Speed Multiplier",
+    Subtitle = "Boost walk speed past standard game limitations",
     Default = false,
-    Callback = function(val: boolean)
-        print("[Vynx] Speed Multiplier:", val)
-    end,
 })
 
--- DependencyBox: only visible when SpeedToggle is enabled!
-local speedDep = MovementBox:AddDependencyBox(speedToggle)
+local speedDep = MoveForm:AddDependencyBox(speedToggle)
 speedDep:AddSlider("SpeedValue", {
     Text = "WalkSpeed Value",
-    Default = 16,
+    Subtitle = "Custom studs per second rate",
+    Default = 28,
     Min = 16,
-    Max = 150,
+    Max = 200,
     Rounding = 0,
     Suffix = " studs/s",
-    Callback = function(val: number)
-        print("[Vynx] WalkSpeed:", val)
+    Callback = function(val)
+        print("[Vynx] Custom speed:", val)
     end,
 })
 
-MovementBox:AddKeybind("FlyKeybind", {
-    Text = "Fly Toggle Key",
-    Default = Enum.KeyCode.X,
-    Mode = "Toggle",
-    Callback = function(active: boolean)
-        print("[Vynx] Fly key triggered!")
+MoveForm:AddStepper("JumpPower", {
+    Text = "Jump Multiplier",
+    Subtitle = "Discrete step-based jump height adjustment",
+    Min = 1,
+    Max = 10,
+    Step = 1,
+    Default = 1,
+    Suffix = "x",
+    Callback = function(stepVal)
+        print("[Vynx] Jump step:", stepVal)
     end,
 })
 
--- 4. Visuals Tab
-local VisualsTab = Window:AddTab("Visuals")
-
-local ESPBox = VisualsTab:AddLeftGroupbox("ESP Settings")
-
-local espBoxToggle = ESPBox:AddToggle("ESPBoxes", {
-    Text = "2D Boxes",
-    Default = true,
-    Tooltip = "Renders 2D bounding boxes around enemy players",
-    Callback = function(val: boolean)
-        print("[Vynx] ESP Boxes:", val)
-    end,
+-- 4. Tab: APPEARANCE & THEME
+local AppearanceTab = GeneralSec:AddTab({
+    Title = "Appearance",
+    Icon = "palette",
 })
 
--- Attach inline Colorpicker to ESPBoxes toggle!
-espBoxToggle:AddColorpicker("BoxColor", {
-    Default = Color3.fromRGB(138, 75, 255),
-    Callback = function(col: Color3)
-        print("[Vynx] ESP Box Color changed:", col)
-    end,
+local VisualSection = AppearanceTab:AddPageSection({
+    Title = "THEME & ACCENTS",
+    Subtitle = "Apple Sequoia dynamic appearance controls",
 })
+local VisualForm = VisualSection:AddForm()
 
-ESPBox:AddToggle("TracerToggle", {
-    Text = "Tracers",
-    Default = false,
-    Callback = function(val: boolean)
-        print("[Vynx] Tracers:", val)
-    end,
-})
-
-local WorldBox = VisualsTab:AddRightGroupbox("World Ambience")
-
-WorldBox:AddColorpicker("AmbientColor", {
-    Text = "Ambience Tint",
-    Default = Color3.fromRGB(0, 240, 255),
-    Callback = function(col: Color3)
-        print("[Vynx] Ambience Tint:", col)
-    end,
-})
-
-WorldBox:AddInput("CustomSkyboxId", {
-    Text = "Custom Skybox Asset ID",
-    Placeholder = "e.g. 12345678",
-    Numeric = true,
-    Callback = function(idStr: string)
-        print("[Vynx] Skybox ID:", idStr)
-    end,
-})
-
--- 5. Settings Tab
-local SettingsTab = Window:AddTab("Settings")
-
-local ThemeBox = SettingsTab:AddLeftGroupbox("Interface & Themes")
-
-ThemeBox:AddDropdown("ThemeSelect", {
-    Text = "Color Theme",
-    Values = { "Obsidian", "Cyberpunk", "Emerald", "Monochrome" },
-    Default = "Obsidian",
-    Tooltip = "Dynamically switches theme palette with live tweens",
-    Callback = function(themeName: string)
+VisualForm:AddSegmented("ThemeMode", {
+    Text = "Interface Theme",
+    Subtitle = "Select dark or light appearance",
+    Values = { "Dark", "Light" },
+    Default = "Dark",
+    Callback = function(themeName)
         Library:SetTheme(themeName)
     end,
 })
 
-ThemeBox:AddButton({
-    Text = "Toggle Watermark",
-    Func = function()
-        if Library.ActiveWatermark then
-            local isVis = Library.ActiveWatermark.Frame.Visible
-            Library:SetWatermarkVisibility(not isVis)
-        end
+VisualForm:AddDropdown("AccentColor", {
+    Text = "Accent Color",
+    Subtitle = "System-wide tint for controls and active highlights",
+    Values = { "Blue", "Purple", "Pink", "Red", "Orange", "Yellow", "Green", "Graphite" },
+    Default = "Blue",
+    Callback = function(accentName)
+        Library:SetAccent(accentName)
     end,
 })
 
-ThemeBox:AddButton({
-    Text = "Unload UI",
+VisualForm:AddButton({
+    Title = "Trigger Success Toast",
+    Subtitle = "Spawns a top-right macOS Sequoia notification toast",
+    Variant = "Prominent",
+    Func = function()
+        Library:Notify({
+            Title = "Theme Updated",
+            Content = "System appearance synchronized successfully.",
+            Type = "Success",
+            Duration = 3.5,
+        })
+    end,
+})
+
+-- 5. Section: PROFILES & DATA
+local SystemSec = Window:AddSection("System")
+
+local ConfigTab = SystemSec:AddTab({
+    Title = "Profiles",
+    Icon = "folder",
+})
+
+-- Built-in SaveManager section
+Library.SaveManager:BuildConfigSection(ConfigTab)
+
+-- Unload Action
+local MaintSection = ConfigTab:AddPageSection({
+    Title = "MAINTENANCE",
+})
+local MaintForm = MaintSection:AddForm()
+
+MaintForm:AddButton({
+    Title = "Unload Vynx",
+    Subtitle = "Disconnects all connections and destroys UI safely",
+    DoubleClick = true,
     Func = function()
         Library:Unload()
-        print("[Vynx] Library unloaded.")
+        print("[Vynx] Library cleanly unloaded.")
     end,
 })
-
--- Build SaveManager Config Section
-Library.SaveManager:BuildConfigSection(SettingsTab)
-
--- Cleanup listener
-Library:OnUnload(function()
-    print("[Vynx] Custom unload listener cleaned up.")
-end)
 
 -- Welcome Notification
 Library:Notify({
-    Title = "vynx Loaded",
-    Content = "Press [RightControl] to toggle menu visibility.",
-    Duration = 5,
+    Title = "Vynx Ready",
+    Content = "Press [RightControl] to toggle or click the floating launcher.",
+    Type = "Info",
+    Duration = 4.5,
 })
 
 return Library

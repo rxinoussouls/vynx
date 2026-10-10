@@ -7,13 +7,19 @@ BUILD_DIR = os.path.join(BASE_DIR, "build")
 OUTPUT_FILE = os.path.join(BUILD_DIR, "bundle.luau")
 
 MODULES = [
-    ("Core.Elements", os.path.join(SRC_DIR, "Core", "Elements.luau")),
+    ("Core.Motion", os.path.join(SRC_DIR, "Core", "Motion.luau")),
     ("Core.Theme", os.path.join(SRC_DIR, "Core", "Theme.luau")),
+    ("Core.Elements", os.path.join(SRC_DIR, "Core", "Elements.luau")),
+    ("Core.Icons", os.path.join(SRC_DIR, "Core", "Icons.luau")),
     ("Core.Maid", os.path.join(SRC_DIR, "Core", "Maid.luau")),
-    ("Core.Tooltip", os.path.join(SRC_DIR, "Core", "Tooltip.luau")),
     ("Core.Drag", os.path.join(SRC_DIR, "Core", "Drag.luau")),
+    ("Core.Tooltip", os.path.join(SRC_DIR, "Core", "Tooltip.luau")),
     ("Core.SaveManager", os.path.join(SRC_DIR, "Core", "SaveManager.luau")),
     ("Components.Popover", os.path.join(SRC_DIR, "Components", "Popover.luau")),
+    ("Components.TitleStack", os.path.join(SRC_DIR, "Components", "TitleStack.luau")),
+    ("Components.Row", os.path.join(SRC_DIR, "Components", "Row.luau")),
+    ("Components.Launcher", os.path.join(SRC_DIR, "Components", "Launcher.luau")),
+    ("Components.StatusBar", os.path.join(SRC_DIR, "Components", "StatusBar.luau")),
     ("Components.Watermark", os.path.join(SRC_DIR, "Components", "Watermark.luau")),
     ("Components.Button", os.path.join(SRC_DIR, "Components", "Button.luau")),
     ("Components.Colorpicker", os.path.join(SRC_DIR, "Components", "Colorpicker.luau")),
@@ -21,10 +27,16 @@ MODULES = [
     ("Components.Toggle", os.path.join(SRC_DIR, "Components", "Toggle.luau")),
     ("Components.Slider", os.path.join(SRC_DIR, "Components", "Slider.luau")),
     ("Components.Input", os.path.join(SRC_DIR, "Components", "Input.luau")),
+    ("Components.Stepper", os.path.join(SRC_DIR, "Components", "Stepper.luau")),
+    ("Components.Segmented", os.path.join(SRC_DIR, "Components", "Segmented.luau")),
     ("Components.Dropdown", os.path.join(SRC_DIR, "Components", "Dropdown.luau")),
     ("Components.Notification", os.path.join(SRC_DIR, "Components", "Notification.luau")),
-    ("Components.Groupbox", os.path.join(SRC_DIR, "Components", "Groupbox.luau")),
+    ("Components.Form", os.path.join(SRC_DIR, "Components", "Form.luau")),
+    ("Components.PageSection", os.path.join(SRC_DIR, "Components", "PageSection.luau")),
+    ("Components.Page", os.path.join(SRC_DIR, "Components", "Page.luau")),
     ("Components.Tab", os.path.join(SRC_DIR, "Components", "Tab.luau")),
+    ("Components.Section", os.path.join(SRC_DIR, "Components", "Section.luau")),
+    ("Components.Groupbox", os.path.join(SRC_DIR, "Components", "Groupbox.luau")),
     ("Components.Window", os.path.join(SRC_DIR, "Components", "Window.luau")),
     ("Main", os.path.join(SRC_DIR, "init.luau")),
 ]
@@ -33,10 +45,7 @@ def generate_bundle():
     os.makedirs(BUILD_DIR, exist_ok=True)
     
     parts = []
-    parts.append("--[[")
-    parts.append("    Vynx UI Library - Standalone Single File Bundle (Vynx 2)")
-    parts.append("    Compatible with all Luau executors and Roblox Studio")
-    parts.append("]]--")
+    parts.append("--[[\n    Vynx UI Library - Standalone Single File Bundle (macOS Sequoia Edition)\n    Compatible with all Luau executors and Roblox Studio\n]]--")
     parts.append("local _modules = {}")
     parts.append("local _loaded = {}")
     parts.append("local function _require(name)")
@@ -50,42 +59,70 @@ def generate_bundle():
     parts.append("    error('Module not found: ' .. tostring(name))")
     parts.append("end\n")
 
+    substitutions = [
+        # Relative require patterns
+        (r'require\(script\.Parent\.Parent\.Core\.Motion\)', '_require("Core.Motion")'),
+        (r'require\(script\.Parent\.Parent\.Core\.Elements\)', '_require("Core.Elements")'),
+        (r'require\(script\.Parent\.Parent\.Core\.Theme\)', '_require("Core.Theme")'),
+        (r'require\(script\.Parent\.Parent\.Core\.Icons\)', '_require("Core.Icons")'),
+        (r'require\(script\.Parent\.Parent\.Core\.Maid\)', '_require("Core.Maid")'),
+        (r'require\(script\.Parent\.Parent\.Core\.Tooltip\)', '_require("Core.Tooltip")'),
+        (r'require\(script\.Parent\.Parent\.Core\.Drag\)', '_require("Core.Drag")'),
+        (r'require\(script\.Parent\.Parent\.Core\.SaveManager\)', '_require("Core.SaveManager")'),
+        
+        (r'require\(script\.Parent\.Motion\)', '_require("Core.Motion")'),
+        (r'require\(script\.Parent\.Elements\)', '_require("Core.Elements")'),
+        (r'require\(script\.Parent\.Theme\)', '_require("Core.Theme")'),
+        (r'require\(script\.Parent\.Icons\)', '_require("Core.Icons")'),
+        (r'require\(script\.Parent\.Maid\)', '_require("Core.Maid")'),
+        (r'require\(script\.Parent\.Tooltip\)', '_require("Core.Tooltip")'),
+        (r'require\(script\.Parent\.Drag\)', '_require("Core.Drag")'),
+        (r'require\(script\.Parent\.SaveManager\)', '_require("Core.SaveManager")'),
+
+        (r'require\(script\.Parent\.Popover\)', '_require("Components.Popover")'),
+        (r'require\(script\.Parent\.TitleStack\)', '_require("Components.TitleStack")'),
+        (r'require\(script\.Parent\.Row\)', '_require("Components.Row")'),
+        (r'require\(script\.Parent\.Form\)', '_require("Components.Form")'),
+        (r'require\(script\.Parent\.PageSection\)', '_require("Components.PageSection")'),
+        (r'require\(script\.Parent\.Page\)', '_require("Components.Page")'),
+        (r'require\(script\.Parent\.Section\)', '_require("Components.Section")'),
+        (r'require\(script\.Parent\.StatusBar\)', '_require("Components.StatusBar")'),
+        (r'require\(script\.Parent\.Launcher\)', '_require("Components.Launcher")'),
+        (r'require\(script\.Parent\.Button\)', '_require("Components.Button")'),
+        (r'require\(script\.Parent\.Colorpicker\)', '_require("Components.Colorpicker")'),
+        (r'require\(script\.Parent\.Keybind\)', '_require("Components.Keybind")'),
+        (r'require\(script\.Parent\.Toggle\)', '_require("Components.Toggle")'),
+        (r'require\(script\.Parent\.Slider\)', '_require("Components.Slider")'),
+        (r'require\(script\.Parent\.Input\)', '_require("Components.Input")'),
+        (r'require\(script\.Parent\.Stepper\)', '_require("Components.Stepper")'),
+        (r'require\(script\.Parent\.Segmented\)', '_require("Components.Segmented")'),
+        (r'require\(script\.Parent\.Dropdown\)', '_require("Components.Dropdown")'),
+        (r'require\(script\.Parent\.Notification\)', '_require("Components.Notification")'),
+        (r'require\(script\.Parent\.Watermark\)', '_require("Components.Watermark")'),
+        (r'require\(script\.Parent\.Groupbox\)', '_require("Components.Groupbox")'),
+        (r'require\(script\.Parent\.Tab\)', '_require("Components.Tab")'),
+        (r'require\(script\.Parent\.Window\)', '_require("Components.Window")'),
+
+        (r'require\(script\.Core\.Motion\)', '_require("Core.Motion")'),
+        (r'require\(script\.Core\.Elements\)', '_require("Core.Elements")'),
+        (r'require\(script\.Core\.Theme\)', '_require("Core.Theme")'),
+        (r'require\(script\.Core\.Icons\)', '_require("Core.Icons")'),
+        (r'require\(script\.Core\.Maid\)', '_require("Core.Maid")'),
+        (r'require\(script\.Core\.Tooltip\)', '_require("Core.Tooltip")'),
+        (r'require\(script\.Core\.Drag\)', '_require("Core.Drag")'),
+        (r'require\(script\.Core\.SaveManager\)', '_require("Core.SaveManager")'),
+        (r'require\(script\.Components\.Popover\)', '_require("Components.Popover")'),
+        (r'require\(script\.Components\.Window\)', '_require("Components.Window")'),
+        (r'require\(script\.Components\.Notification\)', '_require("Components.Notification")'),
+        (r'require\(script\.Components\.Watermark\)', '_require("Components.Watermark")'),
+    ]
+
     for mod_name, file_path in MODULES:
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
-        
-        # Exact require substitutions
-        content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Elements\)', '_require("Core.Elements")', content)
-        content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Theme\)', '_require("Core.Theme")', content)
-        content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Maid\)', '_require("Core.Maid")', content)
-        content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Tooltip\)', '_require("Core.Tooltip")', content)
-        content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Drag\)', '_require("Core.Drag")', content)
-        content = re.sub(r'require\(script\.Parent\.Parent\.Core\.SaveManager\)', '_require("Core.SaveManager")', content)
-        content = re.sub(r'require\(script\.Parent\.Elements\)', '_require("Core.Elements")', content)
-        content = re.sub(r'require\(script\.Parent\.Theme\)', '_require("Core.Theme")', content)
-        content = re.sub(r'require\(script\.Parent\.Maid\)', '_require("Core.Maid")', content)
-        content = re.sub(r'require\(script\.Parent\.Popover\)', '_require("Components.Popover")', content)
-        content = re.sub(r'require\(script\.Parent\.Button\)', '_require("Components.Button")', content)
-        content = re.sub(r'require\(script\.Parent\.Toggle\)', '_require("Components.Toggle")', content)
-        content = re.sub(r'require\(script\.Parent\.Slider\)', '_require("Components.Slider")', content)
-        content = re.sub(r'require\(script\.Parent\.Input\)', '_require("Components.Input")', content)
-        content = re.sub(r'require\(script\.Parent\.Dropdown\)', '_require("Components.Dropdown")', content)
-        content = re.sub(r'require\(script\.Parent\.Colorpicker\)', '_require("Components.Colorpicker")', content)
-        content = re.sub(r'require\(script\.Parent\.Keybind\)', '_require("Components.Keybind")', content)
-        content = re.sub(r'require\(script\.Parent\.Notification\)', '_require("Components.Notification")', content)
-        content = re.sub(r'require\(script\.Parent\.Watermark\)', '_require("Components.Watermark")', content)
-        content = re.sub(r'require\(script\.Parent\.Groupbox\)', '_require("Components.Groupbox")', content)
-        content = re.sub(r'require\(script\.Parent\.Tab\)', '_require("Components.Tab")', content)
-        content = re.sub(r'require\(script\.Parent\.Window\)', '_require("Components.Window")', content)
-        content = re.sub(r'require\(script\.Core\.Elements\)', '_require("Core.Elements")', content)
-        content = re.sub(r'require\(script\.Core\.Theme\)', '_require("Core.Theme")', content)
-        content = re.sub(r'require\(script\.Core\.Maid\)', '_require("Core.Maid")', content)
-        content = re.sub(r'require\(script\.Core\.Tooltip\)', '_require("Core.Tooltip")', content)
-        content = re.sub(r'require\(script\.Core\.SaveManager\)', '_require("Core.SaveManager")', content)
-        content = re.sub(r'require\(script\.Components\.Popover\)', '_require("Components.Popover")', content)
-        content = re.sub(r'require\(script\.Components\.Window\)', '_require("Components.Window")', content)
-        content = re.sub(r'require\(script\.Components\.Notification\)', '_require("Components.Notification")', content)
-        content = re.sub(r'require\(script\.Components\.Watermark\)', '_require("Components.Watermark")', content)
+
+        for pattern, replacement in substitutions:
+            content = re.sub(pattern, replacement, content)
 
         parts.append(f"_modules['{mod_name}'] = function()")
         parts.append(content.strip())

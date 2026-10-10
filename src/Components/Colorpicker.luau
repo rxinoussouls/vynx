@@ -1,5 +1,6 @@
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Motion = require(script.Parent.Parent.Core.Motion)
 local Tooltip = require(script.Parent.Parent.Core.Tooltip)
 local Popover = require(script.Parent.Popover)
 
@@ -23,14 +24,16 @@ local function fromHex(hex)
 end
 
 function Colorpicker.New(parent, id, options, registry, isEmbedded)
-	local currentColor = options.Default or Color3.fromRGB(138, 75, 255)
+	options = options or {}
+	local currentColor = options.Default or Color3.fromRGB(10, 132, 255)
 	local currentAlpha = options.Transparency or 0
 	local callback = options.Callback or function() end
 	local isOpen = false
 
 	local frame = Elements.Create("Frame", {
 		Name = id .. "_Colorpicker",
-		Size = isEmbedded and UDim2.new(0, 32, 0, 18) or UDim2.new(1, 0, 0, 26),
+		Size = isEmbedded and UDim2.fromOffset(28, 20) or UDim2.new(0, 0, 0, 26),
+		AutomaticSize = isEmbedded and Enum.AutomaticSize.None or Enum.AutomaticSize.X,
 		BackgroundTransparency = 1,
 		Parent = parent,
 	})
@@ -39,54 +42,43 @@ function Colorpicker.New(parent, id, options, registry, isEmbedded)
 		Tooltip.Attach(frame, options.Tooltip)
 	end
 
-	if not isEmbedded and (options.Text and options.Text ~= "") then
-		local label = Elements.Create("TextLabel", {
-			Size = UDim2.new(1, -40, 1, 0),
-			BackgroundTransparency = 1,
-			Text = options.Text or id,
-			TextColor3 = Theme.Get("Text"),
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextSize = 13,
-			Font = Enum.Font.GothamMedium,
-			Parent = frame,
-		})
-		Theme.Register(label, "TextColor3", "Text")
-	end
-
 	local previewBtn = Elements.Create("TextButton", {
-		Size = isEmbedded and UDim2.new(1, 0, 1, 0) or UDim2.new(0, 32, 0, 18),
-		AnchorPoint = isEmbedded and Vector2.zero or Vector2.new(1, 0.5),
-		Position = isEmbedded and UDim2.new(0, 0, 0, 0) or UDim2.new(1, -2, 0.5, 0),
+		Name = "PreviewSwatch",
+		Size = UDim2.fromOffset(28, 20),
 		BackgroundColor3 = currentColor,
 		Text = "",
 		AutoButtonColor = false,
 		Parent = frame,
 	})
-	Elements.Round(previewBtn, 4)
-	local previewStroke = Elements.Stroke(previewBtn, Theme.Get("Border"), 1, 0)
-	Theme.Register(previewStroke, "Color", "Border")
+	Elements.Round(previewBtn, 5)
+	local previewStroke = Elements.Stroke(previewBtn, Theme.Get("Hairline"), 1, 0)
+	Theme.Register(previewStroke, "Color", "Hairline")
 
+	-- Popover Palette Card
 	local popover = Elements.Create("Frame", {
 		Name = id .. "_PopoverPalette",
-		Size = UDim2.new(0, 180, 0, 140),
-		BackgroundColor3 = Theme.Get("Secondary"),
+		Size = UDim2.fromOffset(200, 150),
+		BackgroundColor3 = Theme.Get("FormCard"),
 		Visible = false,
 	})
-	Elements.Round(popover, 6)
-	local popoverStroke = Elements.Stroke(popover, Theme.Get("Border"), 1, 0)
-	Theme.Register(popover, "BackgroundColor3", "Secondary")
-	Theme.Register(popoverStroke, "Color", "Border")
+	Elements.Round(popover, 8)
+	local popoverStroke = Elements.Stroke(popover, Theme.Get("Hairline"), 1, 0)
+	Theme.Register(popover, "BackgroundColor3", "FormCard")
+	Theme.Register(popoverStroke, "Color", "Hairline")
 	Elements.Padding(popover, 8)
+	Elements.Shadow(popover, 2, 8, 0.45)
 
 	local popoverLayout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
-		Padding = UDim.new(0, 6),
+		Padding = UDim.new(0, 8),
 		Parent = popover,
 	})
 
+	-- Hex Code Box
 	local hexBox = Elements.Create("TextBox", {
-		Size = UDim2.new(1, 0, 0, 22),
-		BackgroundColor3 = Theme.Get("Surface"),
+		Name = "HexInput",
+		Size = UDim2.new(1, 0, 0, 26),
+		BackgroundColor3 = Theme.Get("ControlFill"),
 		Text = toHex(currentColor),
 		TextColor3 = Theme.Get("Text"),
 		TextSize = 12,
@@ -96,10 +88,12 @@ function Colorpicker.New(parent, id, options, registry, isEmbedded)
 		Parent = popover,
 	})
 	Elements.Round(hexBox, 4)
-	Theme.Register(hexBox, "BackgroundColor3", "Surface")
+	Theme.Register(hexBox, "BackgroundColor3", "ControlFill")
 	Theme.Register(hexBox, "TextColor3", "Text")
 
+	-- Curated Apple Palette Swatches
 	local swatchGridFrame = Elements.Create("Frame", {
+		Name = "SwatchesGrid",
 		Size = UDim2.new(1, 0, 0, 56),
 		BackgroundTransparency = 1,
 		LayoutOrder = 2,
@@ -107,20 +101,22 @@ function Colorpicker.New(parent, id, options, registry, isEmbedded)
 	})
 
 	local swatchLayout = Elements.Create("UIGridLayout", {
-		CellSize = UDim2.new(0, 36, 0, 24),
-		CellPadding = UDim2.new(0, 5, 0, 5),
+		CellSize = UDim2.fromOffset(32, 24),
+		CellPadding = UDim2.fromOffset(6, 6),
 		Parent = swatchGridFrame,
 	})
 
-	local swatches = {
-		Color3.fromRGB(255, 75, 75),
-		Color3.fromRGB(255, 150, 50),
-		Color3.fromRGB(255, 220, 50),
-		Color3.fromRGB(60, 220, 120),
-		Color3.fromRGB(50, 180, 255),
-		Color3.fromRGB(138, 75, 255),
-		Color3.fromRGB(255, 100, 200),
-		Color3.fromRGB(255, 255, 255),
+	local appleSwatches = {
+		Color3.fromRGB(10, 132, 255),  -- Blue
+		Color3.fromRGB(191, 90, 242),  -- Purple
+		Color3.fromRGB(255, 55, 95),   -- Pink
+		Color3.fromRGB(255, 69, 58),   -- Red
+		Color3.fromRGB(255, 159, 10),  -- Orange
+		Color3.fromRGB(255, 214, 10),  -- Yellow
+		Color3.fromRGB(48, 209, 88),   -- Green
+		Color3.fromRGB(152, 152, 159), -- Graphite
+		Color3.fromRGB(255, 255, 255), -- White
+		Color3.fromRGB(28, 28, 30),    -- Dark Window
 	}
 
 	local colorpickerObj = {
@@ -128,6 +124,7 @@ function Colorpicker.New(parent, id, options, registry, isEmbedded)
 		Value = currentColor,
 		Transparency = currentAlpha,
 		Callback = callback,
+		ChangedCallbacks = {},
 		SetValue = function(self, newCol, newAlpha)
 			self.Value = newCol
 			if newAlpha ~= nil then
@@ -136,10 +133,17 @@ function Colorpicker.New(parent, id, options, registry, isEmbedded)
 			previewBtn.BackgroundColor3 = newCol
 			hexBox.Text = toHex(newCol)
 			task.spawn(self.Callback, newCol, self.Transparency)
+			for _, fn in ipairs(self.ChangedCallbacks) do
+				task.spawn(fn, newCol, self.Transparency)
+			end
+		end,
+		OnChanged = function(self, fn)
+			table.insert(self.ChangedCallbacks, fn)
+			return self
 		end,
 	}
 
-	for _, col in ipairs(swatches) do
+	for _, col in ipairs(appleSwatches) do
 		local sBtn = Elements.Create("TextButton", {
 			BackgroundColor3 = col,
 			Text = "",
@@ -147,7 +151,8 @@ function Colorpicker.New(parent, id, options, registry, isEmbedded)
 			Parent = swatchGridFrame,
 		})
 		Elements.Round(sBtn, 4)
-		Elements.Stroke(sBtn, Color3.fromRGB(30, 30, 40), 1, 0)
+		local sStroke = Elements.Stroke(sBtn, Theme.Get("Hairline"), 1, 0)
+		Theme.Register(sStroke, "Color", "Hairline")
 
 		sBtn.MouseButton1Click:Connect(function()
 			colorpickerObj:SetValue(col)
@@ -179,7 +184,10 @@ function Colorpicker.New(parent, id, options, registry, isEmbedded)
 		popover:Destroy()
 	end)
 
-	registry[id] = colorpickerObj
+	if registry then
+		registry[id] = colorpickerObj
+	end
+
 	return colorpickerObj
 end
 

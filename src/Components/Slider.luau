@@ -1,6 +1,7 @@
 local UserInputService = game:GetService("UserInputService")
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Motion = require(script.Parent.Parent.Core.Motion)
 local Tooltip = require(script.Parent.Parent.Core.Tooltip)
 
 local Slider = {}
@@ -10,113 +11,249 @@ local function round(val, decimals)
 	return math.round(val * factor) / factor
 end
 
-function Slider.New(parent, id, options, registry)
+function Slider.New(parent, id, options, registry, isRow)
+	options = options or {}
 	local minVal = options.Min or 0
 	local maxVal = options.Max or 100
+	if maxVal <= minVal then
+		maxVal = minVal + 1
+	end
+
 	local roundingDecimals = options.Rounding or 0
 	local suffix = options.Suffix or ""
 	local currentVal = math.clamp(round(options.Default or minVal, roundingDecimals), minVal, maxVal)
 	local callback = options.Callback or function() end
 
-	local frame = Elements.Create("Frame", {
-		Name = id .. "_Slider",
-		Size = UDim2.new(1, 0, 0, 42),
-		BackgroundTransparency = 1,
-		Parent = parent,
-	})
+	local frame = nil
+	local trackHolder = nil
+	local valLabel = nil
+	local valInput = nil
+
+	if isRow then
+		frame = Elements.Create("Frame", {
+			Name = id .. "_SliderHolder",
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			Parent = parent,
+		})
+
+		local layout = Elements.Create("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Right,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			Padding = UDim.new(0, 10),
+			Parent = frame,
+		})
+
+		trackHolder = Elements.Create("Frame", {
+			Name = "TrackHolder",
+			Size = UDim2.new(1, -64, 0, 20),
+			BackgroundTransparency = 1,
+			Parent = frame,
+		})
+
+		valLabel = Elements.Create("TextButton", {
+			Name = "ValueLabel",
+			Size = UDim2.new(0, 54, 0, 24),
+			BackgroundTransparency = 1,
+			Text = tostring(currentVal) .. suffix,
+			TextColor3 = Theme.Get("SecondaryText"),
+			TextSize = Theme.Typography.Subtitle.Size,
+			Font = Theme.Typography.Subtitle.Font,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			AutoButtonColor = false,
+			Parent = frame,
+		})
+		Theme.Register(valLabel, "TextColor3", "SecondaryText")
+	else
+		frame = Elements.Create("Frame", {
+			Name = id .. "_Slider",
+			Size = UDim2.new(1, 0, 0, 44),
+			BackgroundTransparency = 1,
+			Parent = parent,
+		})
+
+		local header = Elements.Create("Frame", {
+			Size = UDim2.new(1, 0, 0, 18),
+			BackgroundTransparency = 1,
+			Parent = frame,
+		})
+
+		local titleLabel = Elements.Create("TextLabel", {
+			Size = UDim2.new(1, -60, 1, 0),
+			BackgroundTransparency = 1,
+			Text = options.Text or id,
+			TextColor3 = Theme.Get("Text"),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextSize = Theme.Typography.RowTitle.Size,
+			Font = Theme.Typography.RowTitle.Font,
+			Parent = header,
+		})
+		Theme.Register(titleLabel, "TextColor3", "Text")
+
+		valLabel = Elements.Create("TextButton", {
+			Size = UDim2.new(0, 60, 1, 0),
+			Position = UDim2.new(1, -60, 0, 0),
+			BackgroundTransparency = 1,
+			Text = tostring(currentVal) .. suffix,
+			TextColor3 = Theme.Get("SecondaryText"),
+			TextXAlignment = Enum.TextXAlignment.Right,
+			TextSize = Theme.Typography.Subtitle.Size,
+			Font = Theme.Typography.Subtitle.Font,
+			AutoButtonColor = false,
+			Parent = header,
+		})
+		Theme.Register(valLabel, "TextColor3", "SecondaryText")
+
+		trackHolder = Elements.Create("Frame", {
+			Name = "TrackHolder",
+			Size = UDim2.new(1, 0, 0, 20),
+			Position = UDim2.new(0, 0, 0, 22),
+			BackgroundTransparency = 1,
+			Parent = frame,
+		})
+	end
 
 	if options.Tooltip then
 		Tooltip.Attach(frame, options.Tooltip)
 	end
 
-	local header = Elements.Create("Frame", {
-		Size = UDim2.new(1, 0, 0, 18),
-		BackgroundTransparency = 1,
-		Parent = frame,
-	})
-
-	local label = Elements.Create("TextLabel", {
-		Size = UDim2.new(1, -60, 1, 0),
-		BackgroundTransparency = 1,
-		Text = options.Text or id,
+	-- Inline TextBox for direct typing (revealed on double-click)
+	valInput = Elements.Create("TextBox", {
+		Name = "ValueInput",
+		Size = valLabel.Size,
+		Position = valLabel.Position,
+		BackgroundColor3 = Theme.Get("ControlFill"),
+		BackgroundTransparency = 0,
+		Text = tostring(currentVal),
 		TextColor3 = Theme.Get("Text"),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextSize = 13,
-		Font = Enum.Font.GothamMedium,
-		Parent = header,
+		TextSize = Theme.Typography.Subtitle.Size,
+		Font = Theme.Typography.Subtitle.Font,
+		ClearTextOnFocus = false,
+		Visible = false,
+		Parent = valLabel.Parent,
 	})
-	Theme.Register(label, "TextColor3", "Text")
+	Elements.Round(valInput, 4)
+	Theme.Register(valInput, "BackgroundColor3", "ControlFill")
+	Theme.Register(valInput, "TextColor3", "Text")
 
-	local valLabel = Elements.Create("TextLabel", {
-		Size = UDim2.new(0, 60, 1, 0),
-		Position = UDim2.new(1, -60, 0, 0),
-		BackgroundTransparency = 1,
-		Text = tostring(currentVal) .. suffix,
-		TextColor3 = Theme.Get("SubText"),
-		TextXAlignment = Enum.TextXAlignment.Right,
-		TextSize = 12,
-		Font = Enum.Font.Gotham,
-		Parent = header,
-	})
-	Theme.Register(valLabel, "TextColor3", "SubText")
-
+	-- 4px Height Track
 	local track = Elements.Create("TextButton", {
-		Size = UDim2.new(1, 0, 0, 10),
-		Position = UDim2.new(0, 0, 0, 24),
-		BackgroundColor3 = Theme.Get("Surface"),
+		Name = "Track",
+		Size = UDim2.new(1, 0, 0, 4),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 0, 0.5, 0),
+		BackgroundColor3 = Theme.Get("ControlFill"),
 		Text = "",
 		AutoButtonColor = false,
-		Parent = frame,
+		Parent = trackHolder,
 	})
-	Elements.Round(track, 5)
-	local trackStroke = Elements.Stroke(track, Theme.Get("Border"), 1, 0)
-	Theme.Register(track, "BackgroundColor3", "Surface")
-	Theme.Register(trackStroke, "Color", "Border")
+	Elements.Round(track, 2)
+	Theme.Register(track, "BackgroundColor3", "ControlFill")
 
-	local percent = (currentVal - minVal) / (maxVal - minVal)
+	local percent = math.clamp((currentVal - minVal) / (maxVal - minVal), 0, 1)
 
 	local fill = Elements.Create("Frame", {
+		Name = "Fill",
 		Size = UDim2.new(percent, 0, 1, 0),
 		BackgroundColor3 = Theme.Get("Accent"),
 		Parent = track,
 	})
-	Elements.Round(fill, 5)
+	Elements.Round(fill, 2)
 	Theme.Register(fill, "BackgroundColor3", "Accent")
 
-	local sliderObj = {
-		Value = currentVal,
-		Callback = callback,
-		SetValue = function(self, newVal)
-			local clamped = math.clamp(round(newVal, roundingDecimals), minVal, maxVal)
-			if clamped == self.Value and fill.Size.X.Scale == (clamped - minVal) / (maxVal - minVal) then
-				return
-			end
-			self.Value = clamped
-			valLabel.Text = tostring(clamped) .. suffix
-			local p = (clamped - minVal) / (maxVal - minVal)
-			Elements.Tween(fill, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(p, 0, 1, 0),
-			})
-			task.spawn(self.Callback, clamped)
-		end,
-	}
+	-- 16px White Knob centered on thumb
+	local knob = Elements.Create("Frame", {
+		Name = "Knob",
+		Size = UDim2.fromOffset(16, 16),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(percent, 0, 0.5, 0),
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		Parent = track,
+	})
+	Elements.Round(knob, 8)
+
+	local knobShadow = Elements.Create("ImageLabel", {
+		Name = "KnobShadow",
+		Size = UDim2.new(1, 6, 1, 6),
+		Position = UDim2.fromOffset(-3, -2),
+		BackgroundTransparency = 1,
+		Image = "rbxassetid://1316045217",
+		ImageColor3 = Color3.fromRGB(0, 0, 0),
+		ImageTransparency = 0.6,
+		ScaleType = Enum.ScaleType.Slice,
+		SliceCenter = Rect.new(10, 10, 118, 118),
+		ZIndex = knob.ZIndex - 1,
+		Parent = knob,
+	})
 
 	local isDragging = false
 	local parentScroll = nil
 	local originalScrollState = true
 
+	local sliderObj = {
+		Value = currentVal,
+		Callback = callback,
+		ChangedCallbacks = {},
+		SetValue = function(self, newVal)
+			local clamped = math.clamp(round(newVal, roundingDecimals), minVal, maxVal)
+			local p = math.clamp((clamped - minVal) / (maxVal - minVal), 0, 1)
+
+			fill.Size = UDim2.new(p, 0, 1, 0)
+			knob.Position = UDim2.new(p, 0, 0.5, 0)
+			valLabel.Text = tostring(clamped) .. suffix
+
+			if clamped == self.Value then
+				return
+			end
+
+			self.Value = clamped
+			task.spawn(self.Callback, clamped)
+			for _, fn in ipairs(self.ChangedCallbacks) do
+				task.spawn(fn, clamped)
+			end
+		end,
+		OnChanged = function(self, fn)
+			table.insert(self.ChangedCallbacks, fn)
+			return self
+		end,
+	}
+
+	-- Double-click to type directly
+	local lastClick = 0
+	valLabel.MouseButton1Click:Connect(function()
+		local now = os.clock()
+		if now - lastClick < 0.35 then
+			valLabel.Visible = false
+			valInput.Visible = true
+			valInput.Text = tostring(sliderObj.Value)
+			valInput:CaptureFocus()
+		end
+		lastClick = now
+	end)
+
+	valInput.FocusLost:Connect(function(enterPressed)
+		valInput.Visible = false
+		valLabel.Visible = true
+		local num = tonumber(valInput.Text)
+		if num then
+			sliderObj:SetValue(num)
+		end
+	end)
+
 	local function updateFromInput(inputPos)
 		local absPos = track.AbsolutePosition
 		local absSize = track.AbsoluteSize
+		if absSize.X <= 0 then return end
 		local relativeX = math.clamp((inputPos.X - absPos.X) / absSize.X, 0, 1)
 		local val = minVal + (maxVal - minVal) * relativeX
 		sliderObj:SetValue(val)
 	end
 
-	local c1 = track.InputBegan:Connect(function(input)
+	local c1 = trackHolder.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			isDragging = true
-			parentScroll = track:FindFirstAncestorOfClass("ScrollingFrame")
+			parentScroll = trackHolder:FindFirstAncestorOfClass("ScrollingFrame")
 			if parentScroll then
 				originalScrollState = parentScroll.ScrollingEnabled
 				parentScroll.ScrollingEnabled = false
@@ -149,7 +286,10 @@ function Slider.New(parent, id, options, registry)
 		c3:Disconnect()
 	end)
 
-	registry[id] = sliderObj
+	if registry then
+		registry[id] = sliderObj
+	end
+
 	return sliderObj
 end
 

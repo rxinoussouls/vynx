@@ -53,18 +53,22 @@ Theme.Presets = {
 }
 
 Theme.Current = Theme.Presets.Obsidian
-Theme.Registry = {} :: { [Instance]: { Property: string, Token: string } }
+Theme.ChangedEvent = Instance.new("BindableEvent")
+Theme.Changed = Theme.ChangedEvent.Event
+
+-- Weak table map: Instance -> { [PropertyName]: TokenKey }
+Theme.Registry = setmetatable({}, { __mode = "k" }) :: { [Instance]: { [string]: string } }
 
 function Theme.Register(instance: Instance, property: string, token: string): Instance
-	Theme.Registry[instance] = { Property = property, Token = token }
+	if not Theme.Registry[instance] then
+		Theme.Registry[instance] = {}
+	end
+	Theme.Registry[instance][property] = token
+
 	local color = (Theme.Current :: any)[token]
 	if color then
 		(instance :: any)[property] = color
 	end
-
-	instance.Destroying:Connect(function()
-		Theme.Registry[instance] = nil
-	end)
 	return instance
 end
 
@@ -82,16 +86,22 @@ function Theme.SetTheme(nameOrPalette: string | ThemeColors, duration: number?)
 	Theme.Current = palette
 
 	local tweenInfo = TweenInfo.new(duration or 0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	for instance, binding in pairs(Theme.Registry) do
+	for instance, propMap in pairs(Theme.Registry) do
 		if instance and instance.Parent then
-			local color = (palette :: any)[binding.Token]
-			if color then
-				TweenService:Create(instance, tweenInfo, { [binding.Property] = color }):Play()
+			local goals = {}
+			for prop, token in pairs(propMap) do
+				local color = (palette :: any)[token]
+				if color then
+					goals[prop] = color
+				end
 			end
-		else
-			Theme.Registry[instance] = nil
+			if next(goals) ~= nil then
+				TweenService:Create(instance, tweenInfo, goals):Play()
+			end
 		end
 	end
+
+	Theme.ChangedEvent:Fire(palette)
 end
 
 return Theme

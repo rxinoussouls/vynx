@@ -2,48 +2,57 @@
 local UserInputService = game:GetService("UserInputService")
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Tooltip = require(script.Parent.Parent.Core.Tooltip)
 
 local Keybind = {}
 
 export type KeybindOptions = {
-	Text: string,
+	Text: string?,
 	Default: Enum.KeyCode?,
 	Mode: ("Toggle" | "Hold" | "Always")?,
+	Tooltip: string?,
 	Callback: ((boolean) -> ())?,
 }
 
-function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, registry: { [string]: any })
+function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, registry: { [string]: any }, isEmbedded: boolean?)
 	local currentKey: Enum.KeyCode? = options.Default or Enum.KeyCode.Unknown
 	local mode = options.Mode or "Toggle"
 	local callback = options.Callback or function() end
 	local isBinding = false
 	local isHolding = false
+	local isToggled = false
 
 	local frame = Elements.Create("Frame", {
 		Name = id .. "_Keybind",
-		Size = UDim2.new(1, 0, 0, 26),
+		Size = isEmbedded and UDim2.new(0, 46, 0, 18) or UDim2.new(1, 0, 0, 26),
 		BackgroundTransparency = 1,
 		Parent = parent,
 	}) :: Frame
 
-	local label = Elements.Create("TextLabel", {
-		Size = UDim2.new(1, -90, 1, 0),
-		BackgroundTransparency = 1,
-		Text = options.Text or id,
-		TextColor3 = Theme.Get("Text"),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextSize = 13,
-		Font = Enum.Font.GothamMedium,
-		Parent = frame,
-	}) :: TextLabel
-	Theme.Register(label, "TextColor3", "Text")
+	if options.Tooltip then
+		Tooltip.Attach(frame, options.Tooltip)
+	end
+
+	if not isEmbedded and (options.Text and options.Text ~= "") then
+		local label = Elements.Create("TextLabel", {
+			Size = UDim2.new(1, -70, 1, 0),
+			BackgroundTransparency = 1,
+			Text = options.Text or id,
+			TextColor3 = Theme.Get("Text"),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextSize = 13,
+			Font = Enum.Font.GothamMedium,
+			Parent = frame,
+		}) :: TextLabel
+		Theme.Register(label, "TextColor3", "Text")
+	end
 
 	local keyBtn = Elements.Create("TextButton", {
-		Size = UDim2.new(0, 80, 0, 20),
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -2, 0.5, 0),
+		Size = isEmbedded and UDim2.new(1, 0, 1, 0) or UDim2.new(0, 60, 0, 20),
+		AnchorPoint = isEmbedded and Vector2.zero or Vector2.new(1, 0.5),
+		Position = isEmbedded and UDim2.new(0, 0, 0, 0) or UDim2.new(1, -2, 0.5, 0),
 		BackgroundColor3 = Theme.Get("Surface"),
-		Text = currentKey and (currentKey :: Enum.KeyCode).Name or "None",
+		Text = currentKey and currentKey ~= Enum.KeyCode.Unknown and (currentKey :: Enum.KeyCode).Name or "None",
 		TextColor3 = Theme.Get("SubText"),
 		TextSize = 11,
 		Font = Enum.Font.GothamBold,
@@ -55,19 +64,20 @@ function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, reg
 	Theme.Register(keyBtn, "BackgroundColor3", "Surface")
 	Theme.Register(keyStroke, "Color", "Border")
 
-	if not options.Text or options.Text == "" then
-		label.Visible = false
-	end
-
 	local keybindObj = {
 		Frame = frame,
 		Value = currentKey,
 		Mode = mode,
+		Toggled = false,
 		Callback = callback,
 		SetValue = function(self: any, newKey: Enum.KeyCode)
 			self.Value = newKey
 			currentKey = newKey
-			keyBtn.Text = newKey and newKey.Name or "None"
+			keyBtn.Text = newKey and newKey ~= Enum.KeyCode.Unknown and newKey.Name or "None"
+		end,
+		SetMode = function(self: any, newMode: "Toggle" | "Hold" | "Always")
+			self.Mode = newMode
+			mode = newMode
 		end,
 	}
 
@@ -77,7 +87,20 @@ function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, reg
 		keyStroke.Color = Theme.Get("Accent")
 	end)
 
-	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
+	-- Right click to cycle Mode
+	keyBtn.MouseButton2Click:Connect(function()
+		if mode == "Toggle" then
+			keybindObj:SetMode("Hold")
+		elseif mode == "Hold" then
+			keybindObj:SetMode("Always")
+			keybindObj.Toggled = true
+			task.spawn(keybindObj.Callback, true)
+		else
+			keybindObj:SetMode("Toggle")
+		end
+	end)
+
+	local c1 = UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
 		if isBinding then
 			if input.UserInputType == Enum.UserInputType.Keyboard then
 				isBinding = false
@@ -88,21 +111,33 @@ function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, reg
 					keybindObj:SetValue(input.KeyCode)
 				end
 			end
-		elseif not gameProcessed and currentKey and input.KeyCode == currentKey then
+		elseif not gameProcessed and currentKey and currentKey ~= Enum.KeyCode.Unknown and input.KeyCode == currentKey then
 			if mode == "Toggle" then
-				task.spawn(keybindObj.Callback, true)
+				isToggled = not isToggled
+				keybindObj.Toggled = isToggled
+				task.spawn(keybindObj.Callback, isToggled)
 			elseif mode == "Hold" then
 				isHolding = true
+				keybindObj.Toggled = true
+				task.spawn(keybindObj.Callback, true)
+			elseif mode == "Always" then
+				keybindObj.Toggled = true
 				task.spawn(keybindObj.Callback, true)
 			end
 		end
 	end)
 
-	UserInputService.InputEnded:Connect(function(input: InputObject)
-		if not isBinding and currentKey and input.KeyCode == currentKey and mode == "Hold" and isHolding then
+	local c2 = UserInputService.InputEnded:Connect(function(input: InputObject)
+		if not isBinding and currentKey and currentKey ~= Enum.KeyCode.Unknown and input.KeyCode == currentKey and mode == "Hold" and isHolding then
 			isHolding = false
+			keybindObj.Toggled = false
 			task.spawn(keybindObj.Callback, false)
 		end
+	end)
+
+	frame.Destroying:Connect(function()
+		c1:Disconnect()
+		c2:Disconnect()
 	end)
 
 	registry[id] = keybindObj

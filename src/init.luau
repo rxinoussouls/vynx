@@ -1,10 +1,13 @@
 --!strict
+local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 
 local Elements = require(script.Core.Elements)
 local Theme = require(script.Core.Theme)
+local Maid = require(script.Core.Maid)
 local Tooltip = require(script.Core.Tooltip)
 local SaveManager = require(script.Core.SaveManager)
+local Popover = require(script.Components.Popover)
 local Window = require(script.Components.Window)
 local Notification = require(script.Components.Notification)
 local Watermark = require(script.Components.Watermark)
@@ -18,19 +21,39 @@ local Library = {
 	ActiveWindow = nil :: any,
 	ActiveWatermark = nil :: any,
 	UnloadSignals = {} :: { () -> () },
+	Maid = Maid.new(),
 }
 
 SaveManager:SetLibrary(Library)
 
 local function getGuiParent(): Instance
 	if typeof(gethui) == "function" then
-		return gethui()
+		local ok, h = pcall(gethui)
+		if ok and h then return h end
 	end
+
+	-- Try CoreGui with pcall (in Studio, CoreGui write requires security capabilities)
+	local okCore = pcall(function()
+		local test = Instance.new("Folder")
+		test.Parent = CoreGui
+		test:Destroy()
+	end)
+	if okCore then
+		return CoreGui
+	end
+
+	-- Fallback to PlayerGui for Roblox Studio & restricted runners
+	local player = Players.LocalPlayer or Players.PlayerAdded:Wait()
+	local playerGui = player:FindFirstChildOfClass("PlayerGui")
+	if playerGui then
+		return playerGui
+	end
+
 	return CoreGui
 end
 
 function Library:InitGui(): ScreenGui
-	if self.ScreenGui then
+	if self.ScreenGui and self.ScreenGui.Parent then
 		return self.ScreenGui
 	end
 
@@ -38,14 +61,16 @@ function Library:InitGui(): ScreenGui
 		Name = "vynx_" .. string.sub(tostring(math.random()), 3, 8),
 		ResetOnSpawn = false,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		IgnoreGuiInset = true, -- Prevents topbar 36px offset discrepancies
 		Parent = getGuiParent(),
 	}) :: ScreenGui
 
 	if typeof(syn) == "table" and typeof((syn :: any).protect_gui) == "function" then
-		(syn :: any).protect_gui(gui)
+		pcall(function() (syn :: any).protect_gui(gui) end)
 	end
 
 	self.ScreenGui = gui
+	Popover.Init(gui, self.Maid)
 	Notification.Init(gui)
 	Tooltip.Init(gui)
 	return gui
@@ -58,7 +83,7 @@ function Library:CreateWindow(options: any)
 	return win
 end
 
-function Library:Notify(info: { Title: string?, Content: string, Duration: number? })
+function Library:Notify(info: { Title: string?, Content: string, Type: ("Info" | "Success" | "Warn" | "Error")?, Duration: number? })
 	if not self.ScreenGui then
 		self:InitGui()
 	end
@@ -95,10 +120,16 @@ function Library:Unload()
 	end
 	table.clear(self.UnloadSignals)
 
+	self.Maid:Clean()
+	Popover.Clean()
+	Tooltip.Clean()
+	Notification.Clean()
+
 	if self.ScreenGui then
 		self.ScreenGui:Destroy()
 		self.ScreenGui = nil
 	end
+
 	table.clear(self.Toggles)
 	table.clear(self.Options)
 	self.ActiveWatermark = nil

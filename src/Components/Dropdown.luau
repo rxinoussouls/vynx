@@ -2,6 +2,7 @@
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Tooltip = require(script.Parent.Parent.Core.Tooltip)
+local Popover = require(script.Parent.Popover)
 
 local Dropdown = {}
 
@@ -36,8 +37,6 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		Name = id .. "_Dropdown",
 		Size = UDim2.new(1, 0, 0, 48),
 		BackgroundTransparency = 1,
-		ClipsDescendants = false,
-		ZIndex = 5,
 		Parent = parent,
 	}) :: Frame
 
@@ -53,7 +52,6 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextSize = 13,
 		Font = Enum.Font.GothamMedium,
-		ZIndex = 5,
 		Parent = frame,
 	}) :: TextLabel
 	Theme.Register(label, "TextColor3", "Text")
@@ -64,7 +62,6 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		BackgroundColor3 = Theme.Get("Surface"),
 		Text = "",
 		AutoButtonColor = false,
-		ZIndex = 5,
 		Parent = frame,
 	}) :: TextButton
 	Elements.Round(box, 6)
@@ -82,7 +79,6 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		TextSize = 13,
 		Font = Enum.Font.Gotham,
-		ZIndex = 5,
 		Parent = box,
 	}) :: TextLabel
 	Theme.Register(valLabel, "TextColor3", "Text")
@@ -95,34 +91,64 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		TextColor3 = Theme.Get("SubText"),
 		TextSize = 12,
 		Font = Enum.Font.GothamBold,
-		ZIndex = 5,
 		Parent = box,
 	}) :: TextLabel
 	Theme.Register(arrow, "TextColor3", "SubText")
 
-	local listFrame = Elements.Create("ScrollingFrame", {
-		Size = UDim2.new(1, 0, 0, 0),
-		Position = UDim2.new(0, 0, 1, 4),
+	-- Popover List Frame (rendered in Popover layer to prevent clipping!)
+	local listFrame = Elements.Create("Frame", {
+		Name = id .. "_PopoverList",
+		Size = UDim2.new(0, 240, 0, 160),
 		BackgroundColor3 = Theme.Get("Secondary"),
-		BorderSizePixel = 0,
-		ScrollBarThickness = 2,
-		ScrollBarImageColor3 = Theme.Get("Accent"),
 		Visible = false,
-		ClipsDescendants = true,
-		ZIndex = 20,
-		Parent = box,
-	}) :: ScrollingFrame
+	}) :: Frame
 	Elements.Round(listFrame, 6)
 	local listStroke = Elements.Stroke(listFrame, Theme.Get("Border"), 1, 0)
 	Theme.Register(listFrame, "BackgroundColor3", "Secondary")
 	Theme.Register(listStroke, "Color", "Border")
+	Elements.Padding(listFrame, 6)
 
-	local layout = Elements.Create("UIListLayout", {
-		Padding = UDim.new(0, 2),
+	local listLayout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
+		Padding = UDim.new(0, 4),
 		Parent = listFrame,
-	}) :: UIListLayout
-	Elements.Padding(listFrame, 4)
+	})
+
+	-- Search Input Box inside popover when values > 5
+	local searchBox = Elements.Create("TextBox", {
+		Size = UDim2.new(1, 0, 0, 24),
+		BackgroundColor3 = Theme.Get("Surface"),
+		PlaceholderText = "Search...",
+		PlaceholderColor3 = Theme.Get("SubText"),
+		TextColor3 = Theme.Get("Text"),
+		Text = "",
+		TextSize = 12,
+		Font = Enum.Font.Gotham,
+		Visible = #values > 5,
+		LayoutOrder = 1,
+		Parent = listFrame,
+	}) :: TextBox
+	Elements.Round(searchBox, 4)
+	Theme.Register(searchBox, "BackgroundColor3", "Surface")
+	Theme.Register(searchBox, "TextColor3", "Text")
+
+	local scrollContainer = Elements.Create("ScrollingFrame", {
+		Size = UDim2.new(1, 0, 1, #values > 5 and -28 or 0),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 2,
+		ScrollBarImageColor3 = Theme.Get("Accent"),
+		CanvasSize = UDim2.new(0, 0, 0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		LayoutOrder = 2,
+		Parent = listFrame,
+	}) :: ScrollingFrame
+
+	local itemsLayout = Elements.Create("UIListLayout", {
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Padding = UDim.new(0, 2),
+		Parent = scrollContainer,
+	})
 
 	local function getDisplayText(): string
 		if isMulti then
@@ -150,69 +176,79 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 			valLabel.Text = getDisplayText()
 			task.spawn(self.Callback, newVal)
 		end,
-		SetValues = function(self: any, newValues: { string })
-			self.Values = newValues
-			-- rebuild items
-		end,
 	}
 
-	local function refreshItems()
-		for _, child in ipairs(listFrame:GetChildren()) do
+	local function refreshItems(filter: string?)
+		for _, child in ipairs(scrollContainer:GetChildren()) do
 			if child:IsA("TextButton") then
 				child:Destroy()
 			end
 		end
 
+		local query = filter and string.lower(filter) or ""
 		for _, itemVal in ipairs(dropdownObj.Values) do
-			local isSelected = isMulti and (currentValue[itemVal] == true) or (currentValue == itemVal)
-			local itemBtn = Elements.Create("TextButton", {
-				Size = UDim2.new(1, 0, 0, 24),
-				BackgroundColor3 = isSelected and Theme.Get("Surface") or Theme.Get("Secondary"),
-				BackgroundTransparency = isSelected and 0 or 1,
-				Text = "  " .. itemVal,
-				TextColor3 = isSelected and Theme.Get("Accent") or Theme.Get("Text"),
-				TextXAlignment = Enum.TextXAlignment.Left,
-				TextSize = 12,
-				Font = Enum.Font.GothamMedium,
-				AutoButtonColor = false,
-				ZIndex = 21,
-				Parent = listFrame,
-			}) :: TextButton
-			Elements.Round(itemBtn, 4)
+			if query == "" or string.find(string.lower(itemVal), query, 1, true) then
+				local isSelected = isMulti and (currentValue[itemVal] == true) or (currentValue == itemVal)
+				local itemBtn = Elements.Create("TextButton", {
+					Size = UDim2.new(1, 0, 0, 24),
+					BackgroundColor3 = isSelected and Theme.Get("Surface") or Theme.Get("Secondary"),
+					BackgroundTransparency = isSelected and 0 or 1,
+					Text = "  " .. itemVal,
+					TextColor3 = isSelected and Theme.Get("Accent") or Theme.Get("Text"),
+					TextXAlignment = Enum.TextXAlignment.Left,
+					TextSize = 12,
+					Font = Enum.Font.GothamMedium,
+					AutoButtonColor = false,
+					Parent = scrollContainer,
+				}) :: TextButton
+				Elements.Round(itemBtn, 4)
 
-			itemBtn.MouseButton1Click:Connect(function()
-				if isMulti then
-					currentValue[itemVal] = not currentValue[itemVal]
-					dropdownObj:SetValue(currentValue)
-					refreshItems()
-				else
-					dropdownObj:SetValue(itemVal)
-					isOpen = false
-					listFrame.Visible = false
-					arrow.Text = "v"
-					frame.ZIndex = 5
-				end
-			end)
+				itemBtn.MouseButton1Click:Connect(function()
+					if isMulti then
+						currentValue[itemVal] = not currentValue[itemVal]
+						dropdownObj:SetValue(currentValue)
+						refreshItems(searchBox.Text)
+					else
+						dropdownObj:SetValue(itemVal)
+						isOpen = false
+						arrow.Text = "v"
+						Popover.Close()
+					end
+				end)
+			end
 		end
-
-		local totalHeight = math.min(#dropdownObj.Values * 26 + 8, 140)
-		listFrame.Size = UDim2.new(1, 0, 0, totalHeight)
-		listFrame.CanvasSize = UDim2.new(0, 0, 0, #dropdownObj.Values * 26 + 8)
 	end
+
+	searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+		refreshItems(searchBox.Text)
+	end)
+
+	-- Theme change live update for selected item colors
+	local themeConn = Theme.Changed:Connect(function(palette)
+		valLabel.TextColor3 = palette.Text
+		if isOpen then
+			refreshItems(searchBox.Text)
+		end
+	end)
 
 	box.MouseButton1Click:Connect(function()
 		isOpen = not isOpen
 		arrow.Text = isOpen and "^" or "v"
 		if isOpen then
-			frame.ZIndex = 50
-			box.ZIndex = 50
-			refreshItems()
-			listFrame.Visible = true
+			listFrame.Size = UDim2.new(0, math.max(box.AbsoluteSize.X, 180), 0, math.min(#dropdownObj.Values * 26 + 40, 160))
+			refreshItems("")
+			Popover.Open(listFrame, box, function()
+				isOpen = false
+				arrow.Text = "v"
+			end)
 		else
-			frame.ZIndex = 5
-			box.ZIndex = 5
-			listFrame.Visible = false
+			Popover.Close()
 		end
+	end)
+
+	frame.Destroying:Connect(function()
+		themeConn:Disconnect()
+		listFrame:Destroy()
 	end)
 
 	registry[id] = dropdownObj

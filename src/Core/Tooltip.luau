@@ -11,9 +11,10 @@ local tooltipLabel: TextLabel? = nil
 local activeTarget: GuiObject? = nil
 local hoverTime = 0
 local isHovering = false
+local connections = {} :: { RBXScriptConnection }
 
 function Tooltip.Init(gui: ScreenGui)
-	if tooltipFrame then return end
+	if tooltipFrame and tooltipFrame.Parent then return end
 
 	tooltipFrame = Elements.Create("Frame", {
 		Name = "VynxTooltip",
@@ -21,7 +22,7 @@ function Tooltip.Init(gui: ScreenGui)
 		AutomaticSize = Enum.AutomaticSize.X,
 		BackgroundColor3 = Theme.Get("Secondary"),
 		Visible = false,
-		ZIndex = 200,
+		ZIndex = 500,
 		Parent = gui,
 	}) :: Frame
 	Elements.Round(tooltipFrame, 4)
@@ -37,18 +38,19 @@ function Tooltip.Init(gui: ScreenGui)
 		TextColor3 = Theme.Get("Text"),
 		TextSize = 11,
 		Font = Enum.Font.GothamMedium,
-		ZIndex = 201,
+		ZIndex = 501,
 		Parent = tooltipFrame,
 	}) :: TextLabel
 	Theme.Register(tooltipLabel, "TextColor3", "Text")
 
-	UserInputService.InputChanged:Connect(function(input: InputObject)
+	local c1 = UserInputService.InputChanged:Connect(function(input: InputObject)
 		if isHovering and tooltipFrame and tooltipFrame.Visible and input.UserInputType == Enum.UserInputType.MouseMovement then
-			tooltipFrame.Position = UDim2.fromOffset(input.Position.X + 12, input.Position.Y + 12)
+			local mousePos = UserInputService:GetMouseLocation()
+			tooltipFrame.Position = UDim2.fromOffset(mousePos.X + 12, mousePos.Y + 12)
 		end
 	end)
 
-	RunService.RenderStepped:Connect(function(dt: number)
+	local c2 = RunService.RenderStepped:Connect(function(dt: number)
 		if isHovering and activeTarget and not (tooltipFrame and tooltipFrame.Visible) then
 			hoverTime += dt
 			if hoverTime >= 0.35 and tooltipFrame then
@@ -58,6 +60,9 @@ function Tooltip.Init(gui: ScreenGui)
 			end
 		end
 	end)
+
+	table.insert(connections, c1)
+	table.insert(connections, c2)
 end
 
 function Tooltip.Attach(target: GuiObject, text: string)
@@ -79,6 +84,21 @@ function Tooltip.Attach(target: GuiObject, text: string)
 			end
 		end
 	end)
+end
+
+function Tooltip.Clean()
+	for _, c in ipairs(connections) do
+		c:Disconnect()
+	end
+	table.clear(connections)
+	if tooltipFrame then
+		tooltipFrame:Destroy()
+		tooltipFrame = nil
+		tooltipLabel = nil
+	end
+	activeTarget = nil
+	isHovering = false
+	hoverTime = 0
 end
 
 return Tooltip

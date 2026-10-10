@@ -15,13 +15,15 @@ export type ButtonOptions = {
 
 function Button.New(parent: GuiObject, options: ButtonOptions)
 	local callback = options.Func or options.Callback or function() end
-	local lastClickTime = 0
+	local originalText = options.Text or "Button"
+	local waitingConfirm = false
+	local confirmThread: thread? = nil
 
 	local btn = Elements.Create("TextButton", {
-		Name = (options.Text or "Button") .. "_Btn",
+		Name = originalText .. "_Btn",
 		Size = UDim2.new(1, 0, 0, 28),
 		BackgroundColor3 = Theme.Get("Surface"),
-		Text = options.Text or "Button",
+		Text = originalText,
 		TextColor3 = Theme.Get("Text"),
 		TextSize = 13,
 		Font = Enum.Font.GothamMedium,
@@ -40,6 +42,9 @@ function Button.New(parent: GuiObject, options: ButtonOptions)
 		Tooltip.Attach(btn, options.Tooltip)
 	end
 
+	-- Smooth scale bounce via UIScale without affecting neighboring items in layout
+	local uiScale = Elements.Scale(btn, 1)
+
 	local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 	btn.MouseEnter:Connect(function()
@@ -51,24 +56,34 @@ function Button.New(parent: GuiObject, options: ButtonOptions)
 	end)
 
 	btn.MouseButton1Click:Connect(function()
-		local now = os.clock()
+		-- UIScale bounce animation
+		Elements.Tween(uiScale, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Scale = 0.96,
+		})
+		task.delay(0.06, function()
+			Elements.Tween(uiScale, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Scale = 1.0,
+			})
+		end)
+
 		if options.DoubleClick then
-			if (now - lastClickTime) < 0.35 then
-				lastClickTime = 0
+			if waitingConfirm then
+				waitingConfirm = false
+				if confirmThread then
+					task.cancel(confirmThread)
+					confirmThread = nil
+				end
+				btn.Text = originalText
 				task.spawn(callback)
 			else
-				lastClickTime = now
+				waitingConfirm = true
+				btn.Text = "Click again to confirm"
+				confirmThread = task.delay(2.5, function()
+					waitingConfirm = false
+					btn.Text = originalText
+				end)
 			end
 		else
-			-- Quick push click bounce
-			Elements.Tween(btn, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(1, -2, 0, 26),
-			})
-			task.delay(0.08, function()
-				Elements.Tween(btn, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-					Size = UDim2.new(1, 0, 0, 28),
-				})
-			end)
 			task.spawn(callback)
 		end
 	end)

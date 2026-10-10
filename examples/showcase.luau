@@ -83,7 +83,7 @@ CombatBox:AddButton({
 
 local MovementBox = MainTab:AddRightGroupbox("Movement")
 
-MovementBox:AddToggle("SpeedToggle", {
+local speedToggle = MovementBox:AddToggle("SpeedToggle", {
     Text = "Speed Multiplier",
     Default = false,
     Callback = function(val: boolean)
@@ -91,7 +91,9 @@ MovementBox:AddToggle("SpeedToggle", {
     end,
 })
 
-MovementBox:AddSlider("SpeedValue", {
+-- DependencyBox: only visible when SpeedToggle is enabled!
+local speedDep = MovementBox:AddDependencyBox(speedToggle)
+speedDep:AddSlider("SpeedValue", {
     Text = "WalkSpeed Value",
     Default = 16,
     Min = 16,

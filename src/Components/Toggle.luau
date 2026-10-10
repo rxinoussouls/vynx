@@ -28,11 +28,12 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, libra
 	}) :: TextButton
 
 	local label = Elements.Create("TextLabel", {
-		Size = UDim2.new(1, -60, 1, 0),
+		Size = UDim2.new(1, -120, 1, 0),
 		Position = UDim2.new(0, 0, 0, 0),
 		BackgroundTransparency = 1,
 		Text = options.Text or id,
 		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
 		TextSize = 13,
 		Font = Enum.Font.GothamMedium,
 		Parent = frame,
@@ -43,7 +44,7 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, libra
 		Tooltip.Attach(frame, options.Tooltip)
 	end
 
-	-- SubHolder on the right side for switch and attached sub-components (Colorpicker/Keybind)
+	-- SubHolder on right for switch and embedded sub-components (Colorpicker/Keybind)
 	local subHolder = Elements.Create("Frame", {
 		Size = UDim2.new(0, 0, 1, 0),
 		AutomaticSize = Enum.AutomaticSize.X,
@@ -94,26 +95,32 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, libra
 		end
 	end
 
+	-- Listen to dynamic theme changes so active toggles update their accent color live!
+	local themeConn = Theme.Changed:Connect(function(palette)
+		if state then
+			switchBg.BackgroundColor3 = palette.Accent
+		else
+			switchBg.BackgroundColor3 = palette.Surface
+		end
+	end)
+
 	local toggleObj = {
 		Value = state,
 		Callback = callback,
 		SetValue = function(self: any, newValue: boolean)
 			if self.Value == newValue then return end
 			self.Value = newValue
+			state = newValue
 			updateVisuals(newValue)
 			task.spawn(self.Callback, newValue)
 		end,
 		AddColorpicker = function(self: any, subId: string, subOptions: any)
-			local cp = Colorpicker.New(subHolder, subId, subOptions, library.Options)
-			-- Adjust sizing for inline embed
-			cp.Frame.Size = UDim2.new(0, 32, 0, 18)
+			local cp = Colorpicker.New(subHolder, subId, subOptions, library.Options, true)
 			cp.Frame.LayoutOrder = 5
 			return cp
 		end,
 		AddKeybind = function(self: any, subId: string, subOptions: any)
-			local kb = Keybind.New(subHolder, subId, subOptions, library.Options)
-			-- Adjust sizing for inline embed
-			kb.Frame.Size = UDim2.new(0, 50, 0, 18)
+			local kb = Keybind.New(subHolder, subId, subOptions, library.Options, true)
 			kb.Frame.LayoutOrder = 4
 			return kb
 		end,
@@ -121,6 +128,10 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, libra
 
 	frame.MouseButton1Click:Connect(function()
 		toggleObj:SetValue(not toggleObj.Value)
+	end)
+
+	frame.Destroying:Connect(function()
+		themeConn:Disconnect()
 	end)
 
 	library.Toggles[id] = toggleObj

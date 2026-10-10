@@ -100,10 +100,14 @@ function Slider.New(parent: GuiObject, id: string, options: SliderOptions, regis
 		Callback = callback,
 		SetValue = function(self: any, newVal: number)
 			local clamped = math.clamp(round(newVal, roundingDecimals), minVal, maxVal)
+			-- Prevent unneeded tweens and duplicate callbacks when value hasn't changed!
+			if clamped == self.Value and fill.Size.X.Scale == (clamped - minVal) / (maxVal - minVal) then
+				return
+			end
 			self.Value = clamped
 			valLabel.Text = tostring(clamped) .. suffix
 			local p = (clamped - minVal) / (maxVal - minVal)
-			Elements.Tween(fill, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Elements.Tween(fill, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				Size = UDim2.new(p, 0, 1, 0),
 			})
 			task.spawn(self.Callback, clamped)
@@ -111,6 +115,8 @@ function Slider.New(parent: GuiObject, id: string, options: SliderOptions, regis
 	}
 
 	local isDragging = false
+	local parentScroll: ScrollingFrame? = nil
+	local originalScrollState = true
 
 	local function updateFromInput(inputPos: Vector2)
 		local absPos = track.AbsolutePosition
@@ -120,23 +126,41 @@ function Slider.New(parent: GuiObject, id: string, options: SliderOptions, regis
 		sliderObj:SetValue(val)
 	end
 
-	track.InputBegan:Connect(function(input: InputObject)
+	local c1 = track.InputBegan:Connect(function(input: InputObject)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			isDragging = true
+			-- Disable parent scrolling on mobile/touch while scrubbing
+			parentScroll = track:FindFirstAncestorOfClass("ScrollingFrame")
+			if parentScroll then
+				originalScrollState = parentScroll.ScrollingEnabled
+				parentScroll.ScrollingEnabled = false
+			end
 			updateFromInput(Vector2.new(input.Position.X, input.Position.Y))
 		end
 	end)
 
-	UserInputService.InputEnded:Connect(function(input: InputObject)
+	local c2 = UserInputService.InputEnded:Connect(function(input: InputObject)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			isDragging = false
+			if isDragging then
+				isDragging = false
+				if parentScroll then
+					parentScroll.ScrollingEnabled = originalScrollState
+					parentScroll = nil
+				end
+			end
 		end
 	end)
 
-	UserInputService.InputChanged:Connect(function(input: InputObject)
+	local c3 = UserInputService.InputChanged:Connect(function(input: InputObject)
 		if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			updateFromInput(Vector2.new(input.Position.X, input.Position.Y))
 		end
+	end)
+
+	frame.Destroying:Connect(function()
+		c1:Disconnect()
+		c2:Disconnect()
+		c3:Disconnect()
 	end)
 
 	registry[id] = sliderObj

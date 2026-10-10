@@ -9,9 +9,11 @@ OUTPUT_FILE = os.path.join(BUILD_DIR, "bundle.luau")
 MODULES = [
     ("Core.Elements", os.path.join(SRC_DIR, "Core", "Elements.luau")),
     ("Core.Theme", os.path.join(SRC_DIR, "Core", "Theme.luau")),
+    ("Core.Maid", os.path.join(SRC_DIR, "Core", "Maid.luau")),
     ("Core.Tooltip", os.path.join(SRC_DIR, "Core", "Tooltip.luau")),
     ("Core.Drag", os.path.join(SRC_DIR, "Core", "Drag.luau")),
     ("Core.SaveManager", os.path.join(SRC_DIR, "Core", "SaveManager.luau")),
+    ("Components.Popover", os.path.join(SRC_DIR, "Components", "Popover.luau")),
     ("Components.Watermark", os.path.join(SRC_DIR, "Components", "Watermark.luau")),
     ("Components.Button", os.path.join(SRC_DIR, "Components", "Button.luau")),
     ("Components.Colorpicker", os.path.join(SRC_DIR, "Components", "Colorpicker.luau")),
@@ -27,22 +29,45 @@ MODULES = [
     ("Main", os.path.join(SRC_DIR, "init.luau")),
 ]
 
-def clean_code(content: str) -> str:
+def clean_and_strip_types(content: str) -> str:
     lines = content.splitlines()
-    filtered = []
+    cleaned = []
+    in_type_block = False
     for line in lines:
-        if line.strip() == "--!strict":
+        stripped = line.strip()
+        if stripped == "--!strict" or stripped == "--!nonstrict":
             continue
-        filtered.append(line)
-    return "\n".join(filtered)
+        if stripped.startswith("export type") or (stripped.startswith("type ") and "=" in stripped):
+            if "{" in stripped and "}" not in stripped:
+                in_type_block = True
+            continue
+        if in_type_block:
+            if "}" in stripped:
+                in_type_block = False
+            continue
+        cleaned.append(line)
+    
+    code = "\n".join(cleaned)
+    # Strip cast: :: Type
+    code = re.sub(r'::\s*[A-Za-z0-9_?|.]+', '', code)
+    # Strip (x ) left from (x :: any)
+    code = re.sub(r'\(([a-zA-Z0-9_.]+)\s+\)', r'\1', code)
+    # Strip variable annotations: local x: Type = ...
+    code = re.sub(r'local\s+([a-zA-Z0-9_]+)\s*:\s*[A-Za-z0-9_?|.\s{}]+\s*=', r'local \1 =', code)
+    # Strip return types: ): (Type, ...) or ): Type
+    code = re.sub(r'\)\s*:\s*\([A-Za-z0-9_?|.,\s]+\)', ')', code)
+    code = re.sub(r'\)\s*:\s*[A-Za-z0-9_?|.]+', ')', code)
+    # Strip parameter types: var: Type
+    code = re.sub(r'([a-zA-Z0-9_]+)\s*:\s*[A-Za-z0-9_?|.]+(?=[,\)])', r'\1', code)
+    return code
 
 def generate_bundle():
     os.makedirs(BUILD_DIR, exist_ok=True)
     
     parts = []
     parts.append("--[[")
-    parts.append("    Vynx UI Library - Standalone Single File Bundle")
-    parts.append("    Generated for Roblox Luau execution (gethui / CoreGui)")
+    parts.append("    Vynx UI Library - Standalone Single File Bundle (Vynx 2)")
+    parts.append("    Compatible with all Luau executors and Roblox Studio")
     parts.append("]]--")
     parts.append("local _modules = {}")
     parts.append("local _loaded = {}")
@@ -64,11 +89,14 @@ def generate_bundle():
         # Replace requires with _require aliases
         content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Elements\)', '_require("Core.Elements")', content)
         content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Theme\)', '_require("Core.Theme")', content)
+        content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Maid\)', '_require("Core.Maid")', content)
         content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Tooltip\)', '_require("Core.Tooltip")', content)
         content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Drag\)', '_require("Core.Drag")', content)
         content = re.sub(r'require\(script\.Parent\.Parent\.Core\.SaveManager\)', '_require("Core.SaveManager")', content)
         content = re.sub(r'require\(script\.Parent\.Elements\)', '_require("Core.Elements")', content)
         content = re.sub(r'require\(script\.Parent\.Theme\)', '_require("Core.Theme")', content)
+        content = re.sub(r'require\(script\.Parent\.Maid\)', '_require("Core.Maid")', content)
+        content = re.sub(r'require\(script\.Parent\.Popover\)', '_require("Components.Popover")', content)
         content = re.sub(r'require\(script\.Parent\.Button\)', '_require("Components.Button")', content)
         content = re.sub(r'require\(script\.Parent\.Toggle\)', '_require("Components.Toggle")', content)
         content = re.sub(r'require\(script\.Parent\.Slider\)', '_require("Components.Slider")', content)
@@ -83,13 +111,15 @@ def generate_bundle():
         content = re.sub(r'require\(script\.Parent\.Window\)', '_require("Components.Window")', content)
         content = re.sub(r'require\(script\.Core\.Elements\)', '_require("Core.Elements")', content)
         content = re.sub(r'require\(script\.Core\.Theme\)', '_require("Core.Theme")', content)
+        content = re.sub(r'require\(script\.Core\.Maid\)', '_require("Core.Maid")', content)
         content = re.sub(r'require\(script\.Core\.Tooltip\)', '_require("Core.Tooltip")', content)
         content = re.sub(r'require\(script\.Core\.SaveManager\)', '_require("Core.SaveManager")', content)
+        content = re.sub(r'require\(script\.Components\.Popover\)', '_require("Components.Popover")', content)
         content = re.sub(r'require\(script\.Components\.Window\)', '_require("Components.Window")', content)
         content = re.sub(r'require\(script\.Components\.Notification\)', '_require("Components.Notification")', content)
         content = re.sub(r'require\(script\.Components\.Watermark\)', '_require("Components.Watermark")', content)
 
-        clean = clean_code(content)
+        clean = clean_and_strip_types(content)
         
         parts.append(f"_modules['{mod_name}'] = function()")
         parts.append(clean)

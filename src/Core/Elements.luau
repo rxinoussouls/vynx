@@ -5,16 +5,29 @@ local Elements = {}
 
 function Elements.Create(className: string, properties: { [string]: any }?, children: { Instance }?): Instance
 	local instance = Instance.new(className)
+	local targetParent: Instance? = nil
+
 	if properties then
 		for key, value in pairs(properties) do
-			(instance :: any)[key] = value
+			if key == "Parent" then
+				targetParent = value
+			else
+				(instance :: any)[key] = value
+			end
 		end
 	end
+
 	if children then
 		for _, child in ipairs(children) do
 			child.Parent = instance
 		end
 	end
+
+	-- Parent is always assigned last to prevent unneeded property updates during tree insertion
+	if targetParent then
+		instance.Parent = targetParent
+	end
+
 	return instance
 end
 
@@ -50,6 +63,22 @@ function Elements.Padding(target: Instance, pad: number | { Top: number?, Bottom
 	end
 	padding.Parent = target
 	return padding
+end
+
+function Elements.Scale(target: Instance, scale: number?): UIScale
+	local uiScale = Instance.new("UIScale")
+	uiScale.Scale = scale or 1
+	uiScale.Parent = target
+	return uiScale
+end
+
+function Elements.Gradient(target: Instance, colors: ColorSequence?, rotation: number?, transparency: NumberSequence?): UIGradient
+	local grad = Instance.new("UIGradient")
+	if colors then grad.Color = colors end
+	if rotation then grad.Rotation = rotation end
+	if transparency then grad.Transparency = transparency end
+	grad.Parent = target
+	return grad
 end
 
 function Elements.Tween(target: Instance, info: TweenInfo, properties: { [string]: any }): Tween

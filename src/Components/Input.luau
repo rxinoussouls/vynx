@@ -1,6 +1,7 @@
 --!strict
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Tooltip = require(script.Parent.Parent.Core.Tooltip)
 
 local Input = {}
 
@@ -10,12 +11,14 @@ export type InputOptions = {
 	Placeholder: string?,
 	Numeric: boolean?,
 	Finished: boolean?,
+	Tooltip: string?,
 	Callback: ((string) -> ())?,
 }
 
 function Input.New(parent: GuiObject, id: string, options: InputOptions, registry: { [string]: any })
 	local currentText = options.Default or ""
 	local callback = options.Callback or function() end
+	local isFinishedMode = if options.Finished ~= nil then options.Finished else true
 
 	local frame = Elements.Create("Frame", {
 		Name = id .. "_Input",
@@ -23,6 +26,10 @@ function Input.New(parent: GuiObject, id: string, options: InputOptions, registr
 		BackgroundTransparency = 1,
 		Parent = parent,
 	}) :: Frame
+
+	if options.Tooltip then
+		Tooltip.Attach(frame, options.Tooltip)
+	end
 
 	local label = Elements.Create("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 18),
@@ -68,6 +75,7 @@ function Input.New(parent: GuiObject, id: string, options: InputOptions, registr
 		Value = currentText,
 		Callback = callback,
 		SetValue = function(self: any, newText: string)
+			if self.Value == newText and textBox.Text == newText then return end
 			self.Value = newText
 			textBox.Text = newText
 			task.spawn(self.Callback, newText)
@@ -78,18 +86,24 @@ function Input.New(parent: GuiObject, id: string, options: InputOptions, registr
 		Elements.Tween(stroke, TweenInfo.new(0.15), { Color = Theme.Get("Accent") })
 	end)
 
-	textBox.FocusLost:Connect(function(enterPressed: boolean)
-		Elements.Tween(stroke, TweenInfo.new(0.15), { Color = Theme.Get("Border") })
-		local text = textBox.Text
-		if options.Numeric then
-			text = string.gsub(text, "[^%d.-]", "")
-			textBox.Text = text
-		end
-		inputObj.Value = text
-		task.spawn(inputObj.Callback, text)
-	end)
+	if isFinishedMode then
+		-- Only fire when user presses Enter or clicks outside
+		textBox.FocusLost:Connect(function(enterPressed: boolean)
+			Elements.Tween(stroke, TweenInfo.new(0.15), { Color = Theme.Get("Border") })
+			local text = textBox.Text
+			if options.Numeric then
+				text = string.gsub(text, "[^%d.-]", "")
+				textBox.Text = text
+			end
+			inputObj.Value = text
+			task.spawn(inputObj.Callback, text)
+		end)
+	else
+		-- Only fire on live text change
+		textBox.FocusLost:Connect(function()
+			Elements.Tween(stroke, TweenInfo.new(0.15), { Color = Theme.Get("Border") })
+		end)
 
-	if not options.Finished then
 		textBox:GetPropertyChangedSignal("Text"):Connect(function()
 			local text = textBox.Text
 			if options.Numeric then

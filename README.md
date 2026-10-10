@@ -25,7 +25,7 @@ High-performance, modular Roblox Luau UI library modeled after the Obsidian / Li
 ## Quick Start
 
 ```lua
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/username/vynx/main/build/bundle.luau"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/rxinoussouls/vynx/main/build/bundle.luau"))()
 
 local Window = Library:CreateWindow({
     Title = "vynx",

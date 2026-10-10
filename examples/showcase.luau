@@ -2,7 +2,7 @@
 --[[
     Vynx UI Library - Standalone Showcase Script
     Usage:
-        local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/<user>/vynx/main/build/bundle.luau"))()
+        local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/rxinoussouls/vynx/main/build/bundle.luau"))()
 ]]--
 
 local Library = loadfile and loadfile("C:/Users/Admin/.gemini/antigravity/scratch/vynx/build/bundle.luau")()

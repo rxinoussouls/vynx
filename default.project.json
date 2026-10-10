@@ -1,0 +1,11 @@
+{
+  "name": "vynx",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "vynx": {
+        "$path": "src"
+      }
+    }
+  }
+}

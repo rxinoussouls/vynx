@@ -63,8 +63,26 @@ LeftBox:AddSlider("WalkSpeed", {
 
 ---
 
+## Usage in Roblox Studio (Rojo)
+
+1. Run `rojo serve` in the project root.
+2. In Roblox Studio, connect via the Rojo plugin (mounts `src` to `ReplicatedStorage.vynx`).
+3. In a LocalScript:
+```lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Library = require(ReplicatedStorage:WaitForChild("vynx"))
+
+local Window = Library:CreateWindow({
+    Title = "vynx",
+    SubTitle = "Studio Dev",
+})
+```
+
+---
+
 ## Directory Layout
+- `default.project.json`: Rojo configuration syncing `src/` to `ReplicatedStorage.vynx`.
 - `src/Core/`: Base rendering utilities, theme engine, drag engine, and save manager.
 - `src/Components/`: Modular UI element definitions.
-- `build/bundle.luau`: Single-file standalone distribution build.
+- `build/bundle.luau`: Clean single-file standalone distribution build.
 - `examples/showcase.luau`: Full feature test script.

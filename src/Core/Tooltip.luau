@@ -1,4 +1,3 @@
---!strict
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Elements = require(script.Parent.Elements)
@@ -6,14 +5,14 @@ local Theme = require(script.Parent.Theme)
 
 local Tooltip = {}
 
-local tooltipFrame: Frame? = nil
-local tooltipLabel: TextLabel? = nil
-local activeTarget: GuiObject? = nil
+local tooltipFrame = nil
+local tooltipLabel = nil
+local activeTarget = nil
 local hoverTime = 0
 local isHovering = false
-local connections = {} :: { RBXScriptConnection }
+local connections = {}
 
-function Tooltip.Init(gui: ScreenGui)
+function Tooltip.Init(gui)
 	if tooltipFrame and tooltipFrame.Parent then return end
 
 	tooltipFrame = Elements.Create("Frame", {
@@ -24,7 +23,7 @@ function Tooltip.Init(gui: ScreenGui)
 		Visible = false,
 		ZIndex = 500,
 		Parent = gui,
-	}) :: Frame
+	})
 	Elements.Round(tooltipFrame, 4)
 	local stroke = Elements.Stroke(tooltipFrame, Theme.Get("Border"), 1, 0)
 	Theme.Register(tooltipFrame, "BackgroundColor3", "Secondary")
@@ -40,19 +39,19 @@ function Tooltip.Init(gui: ScreenGui)
 		Font = Enum.Font.GothamMedium,
 		ZIndex = 501,
 		Parent = tooltipFrame,
-	}) :: TextLabel
+	})
 	Theme.Register(tooltipLabel, "TextColor3", "Text")
 
-	local c1 = UserInputService.InputChanged:Connect(function(input: InputObject)
+	local c1 = UserInputService.InputChanged:Connect(function(input)
 		if isHovering and tooltipFrame and tooltipFrame.Visible and input.UserInputType == Enum.UserInputType.MouseMovement then
 			local mousePos = UserInputService:GetMouseLocation()
 			tooltipFrame.Position = UDim2.fromOffset(mousePos.X + 12, mousePos.Y + 12)
 		end
 	end)
 
-	local c2 = RunService.RenderStepped:Connect(function(dt: number)
+	local c2 = RunService.RenderStepped:Connect(function(dt)
 		if isHovering and activeTarget and not (tooltipFrame and tooltipFrame.Visible) then
-			hoverTime += dt
+			hoverTime = hoverTime + dt
 			if hoverTime >= 0.35 and tooltipFrame then
 				local mousePos = UserInputService:GetMouseLocation()
 				tooltipFrame.Position = UDim2.fromOffset(mousePos.X + 12, mousePos.Y + 12)
@@ -65,7 +64,7 @@ function Tooltip.Init(gui: ScreenGui)
 	table.insert(connections, c2)
 end
 
-function Tooltip.Attach(target: GuiObject, text: string)
+function Tooltip.Attach(target, text)
 	target.MouseEnter:Connect(function()
 		if not tooltipFrame or not tooltipLabel then return end
 		activeTarget = target

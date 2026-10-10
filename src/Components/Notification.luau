@@ -1,15 +1,14 @@
---!strict
 local TweenService = game:GetService("TweenService")
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
 
 local Notification = {}
 
-local holder: Frame? = nil
-local activeQueue = {} :: { Frame }
+local holder = nil
+local activeQueue = {}
 local MAX_NOTIFICATIONS = 5
 
-function Notification.Init(gui: ScreenGui)
+function Notification.Init(gui)
 	if holder and holder.Parent then return end
 
 	holder = Elements.Create("Frame", {
@@ -20,7 +19,7 @@ function Notification.Init(gui: ScreenGui)
 		BackgroundTransparency = 1,
 		ZIndex = 800,
 		Parent = gui,
-	}) :: Frame
+	})
 
 	local layout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
@@ -30,17 +29,9 @@ function Notification.Init(gui: ScreenGui)
 	})
 end
 
-export type NotifyInfo = {
-	Title: string?,
-	Content: string,
-	Type: ("Info" | "Success" | "Warn" | "Error")?,
-	Duration: number?,
-}
-
-function Notification.Show(info: NotifyInfo)
+function Notification.Show(info)
 	if not holder then return end
 
-	-- Limit max stacked notifications
 	if #activeQueue >= MAX_NOTIFICATIONS then
 		local oldest = table.remove(activeQueue, 1)
 		if oldest and oldest.Parent then
@@ -59,7 +50,6 @@ function Notification.Show(info: NotifyInfo)
 	}
 	local typeColor = typeColors[nType] or Theme.Get("Accent")
 
-	-- Wrapper frame for UIListLayout
 	local wrapper = Elements.Create("Frame", {
 		Name = "ToastWrapper",
 		Size = UDim2.new(1, 0, 0, 0),
@@ -67,19 +57,18 @@ function Notification.Show(info: NotifyInfo)
 		BackgroundTransparency = 1,
 		ClipsDescendants = false,
 		Parent = holder,
-	}) :: Frame
+	})
 	table.insert(activeQueue, wrapper)
 
-	-- Inner toast frame (position can be freely tweened without UIListLayout interference)
 	local toast = Elements.Create("Frame", {
 		Name = "Toast",
 		Size = UDim2.new(1, 0, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundColor3 = Theme.Get("Secondary"),
-		Position = UDim2.new(1, 300, 0, 0), -- starts offscreen right
+		Position = UDim2.new(1, 300, 0, 0),
 		ZIndex = 801,
 		Parent = wrapper,
-	}) :: Frame
+	})
 	Elements.Round(toast, 6)
 	local stroke = Elements.Stroke(toast, Theme.Get("Border"), 1, 0)
 	Theme.Register(toast, "BackgroundColor3", "Secondary")
@@ -103,7 +92,7 @@ function Notification.Show(info: NotifyInfo)
 		LayoutOrder = 1,
 		ZIndex = 802,
 		Parent = toast,
-	}) :: TextLabel
+	})
 
 	local contentLabel = Elements.Create("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 0),
@@ -118,7 +107,7 @@ function Notification.Show(info: NotifyInfo)
 		LayoutOrder = 2,
 		ZIndex = 802,
 		Parent = toast,
-	}) :: TextLabel
+	})
 	Theme.Register(contentLabel, "TextColor3", "Text")
 
 	local barBg = Elements.Create("Frame", {
@@ -127,16 +116,15 @@ function Notification.Show(info: NotifyInfo)
 		LayoutOrder = 3,
 		ZIndex = 802,
 		Parent = toast,
-	}) :: Frame
+	})
 
 	local progress = Elements.Create("Frame", {
 		Size = UDim2.new(1, 0, 1, 0),
 		BackgroundColor3 = typeColor,
 		ZIndex = 803,
 		Parent = barBg,
-	}) :: Frame
+	})
 
-	-- Animate In
 	Elements.Tween(toast, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Position = UDim2.new(0, 0, 0, 0),
 	})
@@ -152,12 +140,11 @@ function Notification.Show(info: NotifyInfo)
 		isPaused = false
 	end)
 
-	-- Timer loop with pause on hover
 	task.spawn(function()
 		while timeLeft > 0 and wrapper.Parent do
 			local dt = task.wait(0.05)
 			if not isPaused then
-				timeLeft -= dt
+				timeLeft = timeLeft - dt
 				progress.Size = UDim2.new(math.clamp(timeLeft / duration, 0, 1), 0, 1, 0)
 			end
 		end

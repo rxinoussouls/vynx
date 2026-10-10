@@ -1,31 +1,23 @@
---!strict
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Tooltip = require(script.Parent.Parent.Core.Tooltip)
 
 local Input = {}
 
-export type InputOptions = {
-	Text: string,
-	Default: string?,
-	Placeholder: string?,
-	Numeric: boolean?,
-	Finished: boolean?,
-	Tooltip: string?,
-	Callback: ((string) -> ())?,
-}
-
-function Input.New(parent: GuiObject, id: string, options: InputOptions, registry: { [string]: any })
+function Input.New(parent, id, options, registry)
 	local currentText = options.Default or ""
 	local callback = options.Callback or function() end
-	local isFinishedMode = if options.Finished ~= nil then options.Finished else true
+	local isFinishedMode = true
+	if options.Finished ~= nil then
+		isFinishedMode = options.Finished
+	end
 
 	local frame = Elements.Create("Frame", {
 		Name = id .. "_Input",
 		Size = UDim2.new(1, 0, 0, 48),
 		BackgroundTransparency = 1,
 		Parent = parent,
-	}) :: Frame
+	})
 
 	if options.Tooltip then
 		Tooltip.Attach(frame, options.Tooltip)
@@ -40,7 +32,7 @@ function Input.New(parent: GuiObject, id: string, options: InputOptions, registr
 		TextSize = 13,
 		Font = Enum.Font.GothamMedium,
 		Parent = frame,
-	}) :: TextLabel
+	})
 	Theme.Register(label, "TextColor3", "Text")
 
 	local inputBg = Elements.Create("Frame", {
@@ -48,7 +40,7 @@ function Input.New(parent: GuiObject, id: string, options: InputOptions, registr
 		Position = UDim2.new(0, 0, 0, 20),
 		BackgroundColor3 = Theme.Get("Surface"),
 		Parent = frame,
-	}) :: Frame
+	})
 	Elements.Round(inputBg, 6)
 	local stroke = Elements.Stroke(inputBg, Theme.Get("Border"), 1, 0)
 	Theme.Register(inputBg, "BackgroundColor3", "Surface")
@@ -67,14 +59,14 @@ function Input.New(parent: GuiObject, id: string, options: InputOptions, registr
 		Font = Enum.Font.Gotham,
 		ClearTextOnFocus = false,
 		Parent = inputBg,
-	}) :: TextBox
+	})
 	Theme.Register(textBox, "TextColor3", "Text")
 	Theme.Register(textBox, "PlaceholderColor3", "SubText")
 
 	local inputObj = {
 		Value = currentText,
 		Callback = callback,
-		SetValue = function(self: any, newText: string)
+		SetValue = function(self, newText)
 			if self.Value == newText and textBox.Text == newText then return end
 			self.Value = newText
 			textBox.Text = newText
@@ -87,8 +79,7 @@ function Input.New(parent: GuiObject, id: string, options: InputOptions, registr
 	end)
 
 	if isFinishedMode then
-		-- Only fire when user presses Enter or clicks outside
-		textBox.FocusLost:Connect(function(enterPressed: boolean)
+		textBox.FocusLost:Connect(function(enterPressed)
 			Elements.Tween(stroke, TweenInfo.new(0.15), { Color = Theme.Get("Border") })
 			local text = textBox.Text
 			if options.Numeric then
@@ -99,7 +90,6 @@ function Input.New(parent: GuiObject, id: string, options: InputOptions, registr
 			task.spawn(inputObj.Callback, text)
 		end)
 	else
-		-- Only fire on live text change
 		textBox.FocusLost:Connect(function()
 			Elements.Tween(stroke, TweenInfo.new(0.15), { Color = Theme.Get("Border") })
 		end)

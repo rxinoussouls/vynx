@@ -1,4 +1,3 @@
---!strict
 local UserInputService = game:GetService("UserInputService")
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
@@ -6,23 +5,12 @@ local Tooltip = require(script.Parent.Parent.Core.Tooltip)
 
 local Slider = {}
 
-export type SliderOptions = {
-	Text: string,
-	Default: number?,
-	Min: number,
-	Max: number,
-	Rounding: number?,
-	Suffix: string?,
-	Tooltip: string?,
-	Callback: ((number) -> ())?,
-}
-
-local function round(val: number, decimals: number?): number
+local function round(val, decimals)
 	local factor = 10 ^ (decimals or 0)
 	return math.round(val * factor) / factor
 end
 
-function Slider.New(parent: GuiObject, id: string, options: SliderOptions, registry: { [string]: any })
+function Slider.New(parent, id, options, registry)
 	local minVal = options.Min or 0
 	local maxVal = options.Max or 100
 	local roundingDecimals = options.Rounding or 0
@@ -35,7 +23,7 @@ function Slider.New(parent: GuiObject, id: string, options: SliderOptions, regis
 		Size = UDim2.new(1, 0, 0, 42),
 		BackgroundTransparency = 1,
 		Parent = parent,
-	}) :: Frame
+	})
 
 	if options.Tooltip then
 		Tooltip.Attach(frame, options.Tooltip)
@@ -56,7 +44,7 @@ function Slider.New(parent: GuiObject, id: string, options: SliderOptions, regis
 		TextSize = 13,
 		Font = Enum.Font.GothamMedium,
 		Parent = header,
-	}) :: TextLabel
+	})
 	Theme.Register(label, "TextColor3", "Text")
 
 	local valLabel = Elements.Create("TextLabel", {
@@ -69,7 +57,7 @@ function Slider.New(parent: GuiObject, id: string, options: SliderOptions, regis
 		TextSize = 12,
 		Font = Enum.Font.Gotham,
 		Parent = header,
-	}) :: TextLabel
+	})
 	Theme.Register(valLabel, "TextColor3", "SubText")
 
 	local track = Elements.Create("TextButton", {
@@ -79,7 +67,7 @@ function Slider.New(parent: GuiObject, id: string, options: SliderOptions, regis
 		Text = "",
 		AutoButtonColor = false,
 		Parent = frame,
-	}) :: TextButton
+	})
 	Elements.Round(track, 5)
 	local trackStroke = Elements.Stroke(track, Theme.Get("Border"), 1, 0)
 	Theme.Register(track, "BackgroundColor3", "Surface")
@@ -91,16 +79,15 @@ function Slider.New(parent: GuiObject, id: string, options: SliderOptions, regis
 		Size = UDim2.new(percent, 0, 1, 0),
 		BackgroundColor3 = Theme.Get("Accent"),
 		Parent = track,
-	}) :: Frame
+	})
 	Elements.Round(fill, 5)
 	Theme.Register(fill, "BackgroundColor3", "Accent")
 
 	local sliderObj = {
 		Value = currentVal,
 		Callback = callback,
-		SetValue = function(self: any, newVal: number)
+		SetValue = function(self, newVal)
 			local clamped = math.clamp(round(newVal, roundingDecimals), minVal, maxVal)
-			-- Prevent unneeded tweens and duplicate callbacks when value hasn't changed!
 			if clamped == self.Value and fill.Size.X.Scale == (clamped - minVal) / (maxVal - minVal) then
 				return
 			end
@@ -115,10 +102,10 @@ function Slider.New(parent: GuiObject, id: string, options: SliderOptions, regis
 	}
 
 	local isDragging = false
-	local parentScroll: ScrollingFrame? = nil
+	local parentScroll = nil
 	local originalScrollState = true
 
-	local function updateFromInput(inputPos: Vector2)
+	local function updateFromInput(inputPos)
 		local absPos = track.AbsolutePosition
 		local absSize = track.AbsoluteSize
 		local relativeX = math.clamp((inputPos.X - absPos.X) / absSize.X, 0, 1)
@@ -126,10 +113,9 @@ function Slider.New(parent: GuiObject, id: string, options: SliderOptions, regis
 		sliderObj:SetValue(val)
 	end
 
-	local c1 = track.InputBegan:Connect(function(input: InputObject)
+	local c1 = track.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			isDragging = true
-			-- Disable parent scrolling on mobile/touch while scrubbing
 			parentScroll = track:FindFirstAncestorOfClass("ScrollingFrame")
 			if parentScroll then
 				originalScrollState = parentScroll.ScrollingEnabled
@@ -139,7 +125,7 @@ function Slider.New(parent: GuiObject, id: string, options: SliderOptions, regis
 		end
 	end)
 
-	local c2 = UserInputService.InputEnded:Connect(function(input: InputObject)
+	local c2 = UserInputService.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			if isDragging then
 				isDragging = false
@@ -151,7 +137,7 @@ function Slider.New(parent: GuiObject, id: string, options: SliderOptions, regis
 		end
 	end)
 
-	local c3 = UserInputService.InputChanged:Connect(function(input: InputObject)
+	local c3 = UserInputService.InputChanged:Connect(function(input)
 		if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			updateFromInput(Vector2.new(input.Position.X, input.Position.Y))
 		end

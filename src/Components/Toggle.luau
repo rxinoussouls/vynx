@@ -1,4 +1,3 @@
---!strict
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Tooltip = require(script.Parent.Parent.Core.Tooltip)
@@ -7,14 +6,7 @@ local Keybind = require(script.Parent.Keybind)
 
 local Toggle = {}
 
-export type ToggleOptions = {
-	Text: string,
-	Default: boolean?,
-	Tooltip: string?,
-	Callback: ((boolean) -> ())?,
-}
-
-function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, library: any)
+function Toggle.New(parent, id, options, library)
 	local state = options.Default or false
 	local callback = options.Callback or function() end
 
@@ -25,7 +17,7 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, libra
 		Text = "",
 		AutoButtonColor = false,
 		Parent = parent,
-	}) :: TextButton
+	})
 
 	local label = Elements.Create("TextLabel", {
 		Size = UDim2.new(1, -120, 1, 0),
@@ -37,14 +29,13 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, libra
 		TextSize = 13,
 		Font = Enum.Font.GothamMedium,
 		Parent = frame,
-	}) :: TextLabel
+	})
 	Theme.Register(label, "TextColor3", "Text")
 
 	if options.Tooltip then
 		Tooltip.Attach(frame, options.Tooltip)
 	end
 
-	-- SubHolder on right for switch and embedded sub-components (Colorpicker/Keybind)
 	local subHolder = Elements.Create("Frame", {
 		Size = UDim2.new(0, 0, 1, 0),
 		AutomaticSize = Enum.AutomaticSize.X,
@@ -52,7 +43,7 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, libra
 		Position = UDim2.new(1, -2, 0.5, 0),
 		BackgroundTransparency = 1,
 		Parent = frame,
-	}) :: Frame
+	})
 
 	local subLayout = Elements.Create("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
@@ -69,7 +60,7 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, libra
 		BackgroundColor3 = state and Theme.Get("Accent") or Theme.Get("Surface"),
 		LayoutOrder = 10,
 		Parent = subHolder,
-	}) :: Frame
+	})
 	Elements.Round(switchBg, 9)
 	local switchStroke = Elements.Stroke(switchBg, Theme.Get("Border"), 1, 0)
 	Theme.Register(switchStroke, "Color", "Border")
@@ -80,12 +71,12 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, libra
 		Position = state and UDim2.new(1, -16, 0.5, 0) or UDim2.new(0, 2, 0.5, 0),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		Parent = switchBg,
-	}) :: Frame
+	})
 	Elements.Round(knob, 7)
 
 	local tweenInfo = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
-	local function updateVisuals(value: boolean)
+	local function updateVisuals(value)
 		if value then
 			Elements.Tween(switchBg, tweenInfo, { BackgroundColor3 = Theme.Get("Accent") })
 			Elements.Tween(knob, tweenInfo, { Position = UDim2.new(1, -16, 0.5, 0) })
@@ -95,7 +86,6 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, libra
 		end
 	end
 
-	-- Listen to dynamic theme changes so active toggles update their accent color live!
 	local themeConn = Theme.Changed:Connect(function(palette)
 		if state then
 			switchBg.BackgroundColor3 = palette.Accent
@@ -107,19 +97,19 @@ function Toggle.New(parent: GuiObject, id: string, options: ToggleOptions, libra
 	local toggleObj = {
 		Value = state,
 		Callback = callback,
-		SetValue = function(self: any, newValue: boolean)
+		SetValue = function(self, newValue)
 			if self.Value == newValue then return end
 			self.Value = newValue
 			state = newValue
 			updateVisuals(newValue)
 			task.spawn(self.Callback, newValue)
 		end,
-		AddColorpicker = function(self: any, subId: string, subOptions: any)
+		AddColorpicker = function(self, subId, subOptions)
 			local cp = Colorpicker.New(subHolder, subId, subOptions, library.Options, true)
 			cp.Frame.LayoutOrder = 5
 			return cp
 		end,
-		AddKeybind = function(self: any, subId: string, subOptions: any)
+		AddKeybind = function(self, subId, subOptions)
 			local kb = Keybind.New(subHolder, subId, subOptions, library.Options, true)
 			kb.Frame.LayoutOrder = 4
 			return kb

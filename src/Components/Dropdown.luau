@@ -1,4 +1,3 @@
---!strict
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Tooltip = require(script.Parent.Parent.Core.Tooltip)
@@ -6,22 +5,13 @@ local Popover = require(script.Parent.Popover)
 
 local Dropdown = {}
 
-export type DropdownOptions = {
-	Text: string,
-	Values: { string },
-	Default: any?,
-	Multi: boolean?,
-	Tooltip: string?,
-	Callback: ((any) -> ())?,
-}
-
-function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, registry: { [string]: any })
+function Dropdown.New(parent, id, options, registry)
 	local values = options.Values or {}
 	local isMulti = options.Multi or false
 	local callback = options.Callback or function() end
 	local isOpen = false
 
-	local currentValue: any
+	local currentValue
 	if isMulti then
 		currentValue = {}
 		if typeof(options.Default) == "table" then
@@ -38,7 +28,7 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		Size = UDim2.new(1, 0, 0, 48),
 		BackgroundTransparency = 1,
 		Parent = parent,
-	}) :: Frame
+	})
 
 	if options.Tooltip then
 		Tooltip.Attach(frame, options.Tooltip)
@@ -53,7 +43,7 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		TextSize = 13,
 		Font = Enum.Font.GothamMedium,
 		Parent = frame,
-	}) :: TextLabel
+	})
 	Theme.Register(label, "TextColor3", "Text")
 
 	local box = Elements.Create("TextButton", {
@@ -63,7 +53,7 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		Text = "",
 		AutoButtonColor = false,
 		Parent = frame,
-	}) :: TextButton
+	})
 	Elements.Round(box, 6)
 	local boxStroke = Elements.Stroke(box, Theme.Get("Border"), 1, 0)
 	Theme.Register(box, "BackgroundColor3", "Surface")
@@ -80,7 +70,7 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		TextSize = 13,
 		Font = Enum.Font.Gotham,
 		Parent = box,
-	}) :: TextLabel
+	})
 	Theme.Register(valLabel, "TextColor3", "Text")
 
 	local arrow = Elements.Create("TextLabel", {
@@ -92,16 +82,15 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		TextSize = 12,
 		Font = Enum.Font.GothamBold,
 		Parent = box,
-	}) :: TextLabel
+	})
 	Theme.Register(arrow, "TextColor3", "SubText")
 
-	-- Popover List Frame (rendered in Popover layer to prevent clipping!)
 	local listFrame = Elements.Create("Frame", {
 		Name = id .. "_PopoverList",
 		Size = UDim2.new(0, 240, 0, 160),
 		BackgroundColor3 = Theme.Get("Secondary"),
 		Visible = false,
-	}) :: Frame
+	})
 	Elements.Round(listFrame, 6)
 	local listStroke = Elements.Stroke(listFrame, Theme.Get("Border"), 1, 0)
 	Theme.Register(listFrame, "BackgroundColor3", "Secondary")
@@ -114,7 +103,6 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		Parent = listFrame,
 	})
 
-	-- Search Input Box inside popover when values > 5
 	local searchBox = Elements.Create("TextBox", {
 		Size = UDim2.new(1, 0, 0, 24),
 		BackgroundColor3 = Theme.Get("Surface"),
@@ -127,7 +115,7 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		Visible = #values > 5,
 		LayoutOrder = 1,
 		Parent = listFrame,
-	}) :: TextBox
+	})
 	Elements.Round(searchBox, 4)
 	Theme.Register(searchBox, "BackgroundColor3", "Surface")
 	Theme.Register(searchBox, "TextColor3", "Text")
@@ -142,7 +130,7 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		LayoutOrder = 2,
 		Parent = listFrame,
-	}) :: ScrollingFrame
+	})
 
 	local itemsLayout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
@@ -150,7 +138,7 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		Parent = scrollContainer,
 	})
 
-	local function getDisplayText(): string
+	local function getDisplayText()
 		if isMulti then
 			local active = {}
 			for item, selected in pairs(currentValue) do
@@ -170,15 +158,18 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		Value = currentValue,
 		Values = values,
 		Callback = callback,
-		SetValue = function(self: any, newVal: any)
+		SetValue = function(self, newVal)
 			self.Value = newVal
 			currentValue = newVal
 			valLabel.Text = getDisplayText()
 			task.spawn(self.Callback, newVal)
 		end,
+		SetValues = function(self, newValues)
+			self.Values = newValues
+		end,
 	}
 
-	local function refreshItems(filter: string?)
+	local function refreshItems(filter)
 		for _, child in ipairs(scrollContainer:GetChildren()) do
 			if child:IsA("TextButton") then
 				child:Destroy()
@@ -200,7 +191,7 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 					Font = Enum.Font.GothamMedium,
 					AutoButtonColor = false,
 					Parent = scrollContainer,
-				}) :: TextButton
+				})
 				Elements.Round(itemBtn, 4)
 
 				itemBtn.MouseButton1Click:Connect(function()
@@ -223,7 +214,6 @@ function Dropdown.New(parent: GuiObject, id: string, options: DropdownOptions, r
 		refreshItems(searchBox.Text)
 	end)
 
-	-- Theme change live update for selected item colors
 	local themeConn = Theme.Changed:Connect(function(palette)
 		valLabel.TextColor3 = palette.Text
 		if isOpen then

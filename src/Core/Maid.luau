@@ -1,21 +1,13 @@
---!strict
 local Maid = {}
 Maid.__index = Maid
 
-export type Maid = {
-	Tasks: { any },
-	Give: (self: Maid, task: any) -> any,
-	Clean: (self: Maid) -> (),
-	Destroy: (self: Maid) -> (),
-}
-
-function Maid.new(): Maid
+function Maid.new()
 	return setmetatable({
 		Tasks = {},
-	}, Maid) :: any
+	}, Maid)
 end
 
-function Maid:Give(task: any)
+function Maid:Give(task)
 	table.insert(self.Tasks, task)
 	return task
 end

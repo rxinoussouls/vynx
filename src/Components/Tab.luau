@@ -1,17 +1,16 @@
---!strict
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Groupbox = require(script.Parent.Groupbox)
 
 local Tab = {}
 
-function Tab.New(parent: GuiObject, name: string, library: any)
+function Tab.New(parent, name, library)
 	local page = Elements.Create("Frame", {
 		Name = name .. "_Page",
 		Size = UDim2.new(1, 0, 1, 0),
 		BackgroundTransparency = 1,
 		Visible = false,
 		Parent = parent,
-	}) :: Frame
+	})
 
 	local leftColumn = Elements.Create("ScrollingFrame", {
 		Name = "LeftColumn",
@@ -24,7 +23,7 @@ function Tab.New(parent: GuiObject, name: string, library: any)
 		CanvasSize = UDim2.new(0, 0, 0, 0),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		Parent = page,
-	}) :: ScrollingFrame
+	})
 
 	local leftLayout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
@@ -43,7 +42,7 @@ function Tab.New(parent: GuiObject, name: string, library: any)
 		CanvasSize = UDim2.new(0, 0, 0, 0),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		Parent = page,
-	}) :: ScrollingFrame
+	})
 
 	local rightLayout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
@@ -54,16 +53,16 @@ function Tab.New(parent: GuiObject, name: string, library: any)
 	local tabObj = {
 		Name = name,
 		Page = page,
-		AddLeftGroupbox = function(self: any, title: string)
+		AddLeftGroupbox = function(self, title)
 			return Groupbox.New(leftColumn, title, library)
 		end,
-		AddRightGroupbox = function(self: any, title: string)
+		AddRightGroupbox = function(self, title)
 			return Groupbox.New(rightColumn, title, library)
 		end,
-		Show = function(self: any)
+		Show = function(self)
 			page.Visible = true
 		end,
-		Hide = function(self: any)
+		Hide = function(self)
 			page.Visible = false
 		end,
 	}

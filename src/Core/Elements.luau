@@ -1,18 +1,17 @@
---!strict
 local TweenService = game:GetService("TweenService")
 
 local Elements = {}
 
-function Elements.Create(className: string, properties: { [string]: any }?, children: { Instance }?): Instance
+function Elements.Create(className, properties, children)
 	local instance = Instance.new(className)
-	local targetParent: Instance? = nil
+	local targetParent = nil
 
 	if properties then
 		for key, value in pairs(properties) do
 			if key == "Parent" then
 				targetParent = value
 			else
-				(instance :: any)[key] = value
+				instance[key] = value
 			end
 		end
 	end
@@ -23,7 +22,6 @@ function Elements.Create(className: string, properties: { [string]: any }?, chil
 		end
 	end
 
-	-- Parent is always assigned last to prevent unneeded property updates during tree insertion
 	if targetParent then
 		instance.Parent = targetParent
 	end
@@ -31,14 +29,14 @@ function Elements.Create(className: string, properties: { [string]: any }?, chil
 	return instance
 end
 
-function Elements.Round(target: Instance, radius: number?): UICorner
+function Elements.Round(target, radius)
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, radius or 6)
 	corner.Parent = target
 	return corner
 end
 
-function Elements.Stroke(target: Instance, color: Color3?, thickness: number?, transparency: number?): UIStroke
+function Elements.Stroke(target, color, thickness, transparency)
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = color or Color3.fromRGB(45, 45, 55)
 	stroke.Thickness = thickness or 1
@@ -48,7 +46,7 @@ function Elements.Stroke(target: Instance, color: Color3?, thickness: number?, t
 	return stroke
 end
 
-function Elements.Padding(target: Instance, pad: number | { Top: number?, Bottom: number?, Left: number?, Right: number? }): UIPadding
+function Elements.Padding(target, pad)
 	local padding = Instance.new("UIPadding")
 	if typeof(pad) == "number" then
 		padding.PaddingTop = UDim.new(0, pad)
@@ -65,14 +63,14 @@ function Elements.Padding(target: Instance, pad: number | { Top: number?, Bottom
 	return padding
 end
 
-function Elements.Scale(target: Instance, scale: number?): UIScale
+function Elements.Scale(target, scale)
 	local uiScale = Instance.new("UIScale")
 	uiScale.Scale = scale or 1
 	uiScale.Parent = target
 	return uiScale
 end
 
-function Elements.Gradient(target: Instance, colors: ColorSequence?, rotation: number?, transparency: NumberSequence?): UIGradient
+function Elements.Gradient(target, colors, rotation, transparency)
 	local grad = Instance.new("UIGradient")
 	if colors then grad.Color = colors end
 	if rotation then grad.Rotation = rotation end
@@ -81,7 +79,7 @@ function Elements.Gradient(target: Instance, colors: ColorSequence?, rotation: n
 	return grad
 end
 
-function Elements.Tween(target: Instance, info: TweenInfo, properties: { [string]: any }): Tween
+function Elements.Tween(target, info, properties)
 	local tween = TweenService:Create(target, info, properties)
 	tween:Play()
 	return tween

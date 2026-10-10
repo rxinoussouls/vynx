@@ -1,4 +1,3 @@
---!strict
 local HttpService = game:GetService("HttpService")
 
 local SaveManager = {}
@@ -6,22 +5,22 @@ local SaveManager = {}
 SaveManager.Folder = "vynx"
 SaveManager.SubFolder = "configs"
 SaveManager.Library = nil
-SaveManager.IgnoreIndexes = { ["ConfigName"] = true } :: { [string]: boolean }
+SaveManager.IgnoreIndexes = { ["ConfigName"] = true }
 
-local function sanitize(name: string): string
+local function sanitize(name)
 	local clean = string.gsub(name, "[^%w%-_]", "")
 	return clean ~= "" and clean or "default"
 end
 
-local function getPath(name: string): string
+local function getPath(name)
 	return string.format("%s/%s/%s.json", SaveManager.Folder, SaveManager.SubFolder, sanitize(name))
 end
 
-function SaveManager:SetLibrary(library: any)
+function SaveManager:SetLibrary(library)
 	self.Library = library
 end
 
-function SaveManager:SetIgnoreIndexes(indexes: { string })
+function SaveManager:SetIgnoreIndexes(indexes)
 	for _, idx in ipairs(indexes) do
 		self.IgnoreIndexes[idx] = true
 	end
@@ -40,7 +39,7 @@ function SaveManager:InitFolders()
 	end
 end
 
-function SaveManager:Save(name: string): boolean
+function SaveManager:Save(name)
 	if not self.Library then return false end
 	self:InitFolders()
 
@@ -91,7 +90,7 @@ function SaveManager:Save(name: string): boolean
 	return false
 end
 
-function SaveManager:Load(name: string): boolean
+function SaveManager:Load(name)
 	if not self.Library then return false end
 	local filePath = getPath(name)
 
@@ -122,7 +121,7 @@ function SaveManager:Load(name: string): boolean
 				if item.Type == "Color3" then
 					self.Library.Options[id]:SetValue(Color3.new(item.R, item.G, item.B), item.Transparency or 0)
 				elseif item.Type == "EnumItem" then
-					local key = (Enum.KeyCode :: any)[item.Name]
+					local key = Enum.KeyCode[item.Name]
 					if key then
 						self.Library.Options[id]:SetValue(key)
 						if item.Mode and self.Library.Options[id].SetMode then
@@ -139,7 +138,7 @@ function SaveManager:Load(name: string): boolean
 	return true
 end
 
-function SaveManager:DeleteConfig(name: string): boolean
+function SaveManager:DeleteConfig(name)
 	local filePath = getPath(name)
 	if typeof(delfile) == "function" and typeof(isfile) == "function" and isfile(filePath) then
 		local ok = pcall(function() delfile(filePath) end)
@@ -148,7 +147,7 @@ function SaveManager:DeleteConfig(name: string): boolean
 	return false
 end
 
-function SaveManager:ListConfigs(): { string }
+function SaveManager:ListConfigs()
 	local configs = {}
 	if typeof(listfiles) == "function" and typeof(isfolder) == "function" then
 		self:InitFolders()
@@ -166,7 +165,7 @@ function SaveManager:ListConfigs(): { string }
 	return configs
 end
 
-function SaveManager:SetAutoLoad(name: string)
+function SaveManager:SetAutoLoad(name)
 	local autoPath = self.Folder .. "/autoload.txt"
 	if typeof(writefile) == "function" then
 		pcall(function() writefile(autoPath, sanitize(name)) end)
@@ -183,7 +182,7 @@ function SaveManager:CheckAutoLoad()
 	end
 end
 
-function SaveManager:BuildConfigSection(tab: any)
+function SaveManager:BuildConfigSection(tab)
 	local box = tab:AddRightGroupbox("Configuration")
 
 	local configNameInput = box:AddInput("ConfigName", {

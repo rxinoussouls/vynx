@@ -20,7 +20,7 @@ local TweenService = game:GetService("TweenService")
 
 local Elements = {}
 
-function Elements.Create(className, properties: { [string]: any }?, children: { Instance }?)
+function Elements.Create(className, properties, children)
 	local instance = Instance.new(className)
 	local targetParent = nil
 
@@ -40,7 +40,6 @@ function Elements.Create(className, properties: { [string]: any }?, children: { 
 		end
 	end
 
-	-- Parent is always assigned last to prevent unneeded property updates during tree insertion
 	if targetParent then
 		instance.Parent = targetParent
 	end
@@ -65,7 +64,7 @@ function Elements.Stroke(target, color, thickness, transparency)
 	return stroke
 end
 
-function Elements.Padding(target, pad: number | { Top, Bottom, Left, Right: number? })
+function Elements.Padding(target, pad)
 	local padding = Instance.new("UIPadding")
 	if typeof(pad) == "number" then
 		padding.PaddingTop = UDim.new(0, pad)
@@ -98,7 +97,7 @@ function Elements.Gradient(target, colors, rotation, transparency)
 	return grad
 end
 
-function Elements.Tween(target, info, properties: { [string]: any })
+function Elements.Tween(target, info, properties)
 	local tween = TweenService:Create(target, info, properties)
 	tween:Play()
 	return tween
@@ -111,7 +110,6 @@ _modules['Core.Theme'] = function()
 local TweenService = game:GetService("TweenService")
 
 local Theme = {}
-
 
 Theme.Presets = {
 	Obsidian = {
@@ -156,8 +154,7 @@ Theme.Current = Theme.Presets.Obsidian
 Theme.ChangedEvent = Instance.new("BindableEvent")
 Theme.Changed = Theme.ChangedEvent.Event
 
--- Weak table map: Instance -> { [PropertyName]: TokenKey }
-Theme.Registry = setmetatable({}, { __mode = "k" }) :: { [Instance]: { [string]: string } }
+Theme.Registry = setmetatable({}, { __mode = "k" })
 
 function Theme.Register(instance, property, token)
 	if not Theme.Registry[instance] then
@@ -176,8 +173,8 @@ function Theme.Get(token)
 	return Theme.Current[token] or Color3.fromRGB(255, 255, 255)
 end
 
-function Theme.SetTheme(nameOrPalette: string | ThemeColors, duration)
-	local palette: ThemeColors
+function Theme.SetTheme(nameOrPalette, duration)
+	local palette
 	if typeof(nameOrPalette) == "string" then
 		palette = Theme.Presets[nameOrPalette] or Theme.Presets.Obsidian
 	else
@@ -196,7 +193,7 @@ function Theme.SetTheme(nameOrPalette: string | ThemeColors, duration)
 				end
 			end
 			if next(goals) ~= nil then
-				TweenService:Create(instance, tweenInfo, goals)()
+				TweenService:Create(instance, tweenInfo, goals):Play()
 			end
 		end
 	end
@@ -211,15 +208,10 @@ _modules['Core.Maid'] = function()
 local Maid = {}
 Maid.__index = Maid
 
-	Give: (self, task) -> any,
-	Clean: (self) -> (),
-	Destroy: (self) -> (),
-}
-
 function Maid.new()
 	return setmetatable({
 		Tasks = {},
-	}, Maid) 
+	}, Maid)
 end
 
 function Maid:Give(task)
@@ -262,7 +254,7 @@ local tooltipLabel = nil
 local activeTarget = nil
 local hoverTime = 0
 local isHovering = false
-local connections = {} :: { RBXScriptConnection }
+local connections = {}
 
 function Tooltip.Init(gui)
 	if tooltipFrame and tooltipFrame.Parent then return end
@@ -275,7 +267,7 @@ function Tooltip.Init(gui)
 		Visible = false,
 		ZIndex = 500,
 		Parent = gui,
-	}) 
+	})
 	Elements.Round(tooltipFrame, 4)
 	local stroke = Elements.Stroke(tooltipFrame, Theme.Get("Border"), 1, 0)
 	Theme.Register(tooltipFrame, "BackgroundColor3", "Secondary")
@@ -291,7 +283,7 @@ function Tooltip.Init(gui)
 		Font = Enum.Font.GothamMedium,
 		ZIndex = 501,
 		Parent = tooltipFrame,
-	}) 
+	})
 	Theme.Register(tooltipLabel, "TextColor3", "Text")
 
 	local c1 = UserInputService.InputChanged:Connect(function(input)
@@ -303,7 +295,7 @@ function Tooltip.Init(gui)
 
 	local c2 = RunService.RenderStepped:Connect(function(dt)
 		if isHovering and activeTarget and not (tooltipFrame and tooltipFrame.Visible) then
-			hoverTime += dt
+			hoverTime = hoverTime + dt
 			if hoverTime >= 0.35 and tooltipFrame then
 				local mousePos = UserInputService:GetMouseLocation()
 				tooltipFrame.Position = UDim2.fromOffset(mousePos.X + 12, mousePos.Y + 12)
@@ -463,7 +455,7 @@ local SaveManager = {}
 SaveManager.Folder = "vynx"
 SaveManager.SubFolder = "configs"
 SaveManager.Library = nil
-SaveManager.IgnoreIndexes = { ["ConfigName"] = true } :: { [string]: boolean }
+SaveManager.IgnoreIndexes = { ["ConfigName"] = true }
 
 local function sanitize(name)
 	local clean = string.gsub(name, "[^%w%-_]", "")
@@ -478,7 +470,7 @@ function SaveManager:SetLibrary(library)
 	self.Library = library
 end
 
-function SaveManager:SetIgnoreIndexes(indexes: { string })
+function SaveManager:SetIgnoreIndexes(indexes)
 	for _, idx in ipairs(indexes) do
 		self.IgnoreIndexes[idx] = true
 	end
@@ -605,7 +597,7 @@ function SaveManager:DeleteConfig(name)
 	return false
 end
 
-function SaveManager:ListConfigs(): { string }
+function SaveManager:ListConfigs()
 	local configs = {}
 	if typeof(listfiles) == "function" and typeof(isfolder) == "function" then
 		self:InitFolders()
@@ -732,7 +724,7 @@ local Popover = {}
 local popoverLayer = nil
 local activeContent = nil
 local activeAnchor = nil
-local closeCallback: (() -> ())? = nil
+local closeCallback = nil
 local inputConnection = nil
 
 function Popover.Init(gui, maid)
@@ -744,7 +736,7 @@ function Popover.Init(gui, maid)
 		BackgroundTransparency = 1,
 		ZIndex = 1000,
 		Parent = gui,
-	}) 
+	})
 
 	if inputConnection then
 		inputConnection:Disconnect()
@@ -755,10 +747,12 @@ function Popover.Init(gui, maid)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			local pos = Vector2.new(input.Position.X, input.Position.Y)
 
-			local cPos, cSize = activeContent.AbsolutePosition, activeContent.AbsoluteSize
+			local cPos = activeContent.AbsolutePosition
+			local cSize = activeContent.AbsoluteSize
 			local inContent = pos.X >= cPos.X and pos.X <= cPos.X + cSize.X and pos.Y >= cPos.Y and pos.Y <= cPos.Y + cSize.Y
 
-			local aPos, aSize = activeAnchor.AbsolutePosition, activeAnchor.AbsoluteSize
+			local aPos = activeAnchor.AbsolutePosition
+			local aSize = activeAnchor.AbsoluteSize
 			local inAnchor = pos.X >= aPos.X and pos.X <= aPos.X + aSize.X and pos.Y >= aPos.Y and pos.Y <= aPos.Y + aSize.Y
 
 			if not inContent and not inAnchor then
@@ -772,7 +766,7 @@ function Popover.Init(gui, maid)
 	end
 end
 
-function Popover.Open(content, anchor, onClose: (() -> ())?)
+function Popover.Open(content, anchor, onClose)
 	if not popoverLayer then return end
 	if activeContent == content then
 		Popover.Close()
@@ -788,7 +782,6 @@ function Popover.Open(content, anchor, onClose: (() -> ())?)
 	content.Parent = popoverLayer
 	content.Visible = true
 
-	-- Calculate position based on anchor's AbsolutePosition
 	local aPos = anchor.AbsolutePosition
 	local aSize = anchor.AbsoluteSize
 	local cSize = content.AbsoluteSize
@@ -801,7 +794,6 @@ function Popover.Open(content, anchor, onClose: (() -> ())?)
 	end
 
 	local targetY = aPos.Y + aSize.Y + 4
-	-- If it overflows below, display above the anchor
 	if targetY + cSize.Y > viewSize.Y - 10 then
 		targetY = aPos.Y - cSize.Y - 4
 	end
@@ -854,14 +846,13 @@ function Watermark.New(gui, defaultText)
 		BackgroundColor3 = Theme.Get("Secondary"),
 		ZIndex = 90,
 		Parent = gui,
-	}) 
+	})
 	Elements.Round(frame, 6)
 	local stroke = Elements.Stroke(frame, Theme.Get("Border"), 1, 0)
 	Theme.Register(frame, "BackgroundColor3", "Secondary")
 	Theme.Register(stroke, "Color", "Border")
 	Elements.Padding(frame, { Top = 4, Bottom = 4, Left = 10, Right = 10 })
 
-	-- Accent Dot
 	local dot = Elements.Create("Frame", {
 		Size = UDim2.new(0, 6, 0, 6),
 		AnchorPoint = Vector2.new(0, 0.5),
@@ -869,7 +860,7 @@ function Watermark.New(gui, defaultText)
 		BackgroundColor3 = Theme.Get("Accent"),
 		ZIndex = 91,
 		Parent = frame,
-	}) 
+	})
 	Elements.Round(dot, 3)
 	Theme.Register(dot, "BackgroundColor3", "Accent")
 
@@ -884,7 +875,7 @@ function Watermark.New(gui, defaultText)
 		Font = Enum.Font.GothamMedium,
 		ZIndex = 91,
 		Parent = frame,
-	}) 
+	})
 	Theme.Register(label, "TextColor3", "Text")
 
 	Drag.Make(frame, frame, 0.2)
@@ -912,7 +903,6 @@ local Tooltip = _require("Core.Tooltip")
 
 local Button = {}
 
-
 function Button.New(parent, options)
 	local callback = options.Func or options.Callback or function() end
 	local originalText = options.Text or "Button"
@@ -930,7 +920,7 @@ function Button.New(parent, options)
 		AutoButtonColor = false,
 		ClipsDescendants = true,
 		Parent = parent,
-	}) 
+	})
 
 	Elements.Round(btn, 6)
 	local stroke = Elements.Stroke(btn, Theme.Get("Border"), 1, 0)
@@ -942,7 +932,6 @@ function Button.New(parent, options)
 		Tooltip.Attach(btn, options.Tooltip)
 	end
 
-	-- Smooth scale bounce via UIScale without affecting neighboring items in layout
 	local uiScale = Elements.Scale(btn, 1)
 
 	local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -956,7 +945,6 @@ function Button.New(parent, options)
 	end)
 
 	btn.MouseButton1Click:Connect(function()
-		-- UIScale bounce animation
 		Elements.Tween(uiScale, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Scale = 0.96,
 		})
@@ -1002,7 +990,6 @@ local Popover = _require("Components.Popover")
 
 local Colorpicker = {}
 
-
 local function toHex(c)
 	return string.format("#%02X%02X%02X", math.floor(c.R * 255), math.floor(c.G * 255), math.floor(c.B * 255))
 end
@@ -1020,7 +1007,7 @@ local function fromHex(hex)
 	return nil
 end
 
-function Colorpicker.New(parent, id, options, registry: { [string]: any }, isEmbedded)
+function Colorpicker.New(parent, id, options, registry, isEmbedded)
 	local currentColor = options.Default or Color3.fromRGB(138, 75, 255)
 	local currentAlpha = options.Transparency or 0
 	local callback = options.Callback or function() end
@@ -1031,7 +1018,7 @@ function Colorpicker.New(parent, id, options, registry: { [string]: any }, isEmb
 		Size = isEmbedded and UDim2.new(0, 32, 0, 18) or UDim2.new(1, 0, 0, 26),
 		BackgroundTransparency = 1,
 		Parent = parent,
-	}) 
+	})
 
 	if options.Tooltip then
 		Tooltip.Attach(frame, options.Tooltip)
@@ -1047,7 +1034,7 @@ function Colorpicker.New(parent, id, options, registry: { [string]: any }, isEmb
 			TextSize = 13,
 			Font = Enum.Font.GothamMedium,
 			Parent = frame,
-		}) 
+		})
 		Theme.Register(label, "TextColor3", "Text")
 	end
 
@@ -1059,18 +1046,17 @@ function Colorpicker.New(parent, id, options, registry: { [string]: any }, isEmb
 		Text = "",
 		AutoButtonColor = false,
 		Parent = frame,
-	}) 
+	})
 	Elements.Round(previewBtn, 4)
 	local previewStroke = Elements.Stroke(previewBtn, Theme.Get("Border"), 1, 0)
 	Theme.Register(previewStroke, "Color", "Border")
 
-	-- Palette Popover Frame (Opened in ScreenGui Popover layer!)
 	local popover = Elements.Create("Frame", {
 		Name = id .. "_PopoverPalette",
 		Size = UDim2.new(0, 180, 0, 140),
 		BackgroundColor3 = Theme.Get("Secondary"),
 		Visible = false,
-	}) 
+	})
 	Elements.Round(popover, 6)
 	local popoverStroke = Elements.Stroke(popover, Theme.Get("Border"), 1, 0)
 	Theme.Register(popover, "BackgroundColor3", "Secondary")
@@ -1083,7 +1069,6 @@ function Colorpicker.New(parent, id, options, registry: { [string]: any }, isEmb
 		Parent = popover,
 	})
 
-	-- Hex Code input row
 	local hexBox = Elements.Create("TextBox", {
 		Size = UDim2.new(1, 0, 0, 22),
 		BackgroundColor3 = Theme.Get("Surface"),
@@ -1094,12 +1079,11 @@ function Colorpicker.New(parent, id, options, registry: { [string]: any }, isEmb
 		ClearTextOnFocus = false,
 		LayoutOrder = 1,
 		Parent = popover,
-	}) 
+	})
 	Elements.Round(hexBox, 4)
 	Theme.Register(hexBox, "BackgroundColor3", "Surface")
 	Theme.Register(hexBox, "TextColor3", "Text")
 
-	-- Quick Swatches Grid
 	local swatchGridFrame = Elements.Create("Frame", {
 		Size = UDim2.new(1, 0, 0, 56),
 		BackgroundTransparency = 1,
@@ -1146,7 +1130,7 @@ function Colorpicker.New(parent, id, options, registry: { [string]: any }, isEmb
 			Text = "",
 			AutoButtonColor = false,
 			Parent = swatchGridFrame,
-		}) 
+		})
 		Elements.Round(sBtn, 4)
 		Elements.Stroke(sBtn, Color3.fromRGB(30, 30, 40), 1, 0)
 
@@ -1195,8 +1179,7 @@ local Tooltip = _require("Core.Tooltip")
 
 local Keybind = {}
 
-
-function Keybind.New(parent, id, options, registry: { [string]: any }, isEmbedded)
+function Keybind.New(parent, id, options, registry, isEmbedded)
 	local currentKey = options.Default or Enum.KeyCode.Unknown
 	local mode = options.Mode or "Toggle"
 	local callback = options.Callback or function() end
@@ -1209,7 +1192,7 @@ function Keybind.New(parent, id, options, registry: { [string]: any }, isEmbedde
 		Size = isEmbedded and UDim2.new(0, 46, 0, 18) or UDim2.new(1, 0, 0, 26),
 		BackgroundTransparency = 1,
 		Parent = parent,
-	}) 
+	})
 
 	if options.Tooltip then
 		Tooltip.Attach(frame, options.Tooltip)
@@ -1225,7 +1208,7 @@ function Keybind.New(parent, id, options, registry: { [string]: any }, isEmbedde
 			TextSize = 13,
 			Font = Enum.Font.GothamMedium,
 			Parent = frame,
-		}) 
+		})
 		Theme.Register(label, "TextColor3", "Text")
 	end
 
@@ -1240,7 +1223,7 @@ function Keybind.New(parent, id, options, registry: { [string]: any }, isEmbedde
 		Font = Enum.Font.GothamBold,
 		AutoButtonColor = false,
 		Parent = frame,
-	}) 
+	})
 	Elements.Round(keyBtn, 4)
 	local keyStroke = Elements.Stroke(keyBtn, Theme.Get("Border"), 1, 0)
 	Theme.Register(keyBtn, "BackgroundColor3", "Surface")
@@ -1257,7 +1240,7 @@ function Keybind.New(parent, id, options, registry: { [string]: any }, isEmbedde
 			currentKey = newKey
 			keyBtn.Text = newKey and newKey ~= Enum.KeyCode.Unknown and newKey.Name or "None"
 		end,
-		SetMode = function(self, newMode: "Toggle" | "Hold" | "Always")
+		SetMode = function(self, newMode)
 			self.Mode = newMode
 			mode = newMode
 		end,
@@ -1269,7 +1252,6 @@ function Keybind.New(parent, id, options, registry: { [string]: any }, isEmbedde
 		keyStroke.Color = Theme.Get("Accent")
 	end)
 
-	-- Right click to cycle Mode
 	keyBtn.MouseButton2Click:Connect(function()
 		if mode == "Toggle" then
 			keybindObj:SetMode("Hold")
@@ -1338,7 +1320,6 @@ local Keybind = _require("Components.Keybind")
 
 local Toggle = {}
 
-
 function Toggle.New(parent, id, options, library)
 	local state = options.Default or false
 	local callback = options.Callback or function() end
@@ -1350,7 +1331,7 @@ function Toggle.New(parent, id, options, library)
 		Text = "",
 		AutoButtonColor = false,
 		Parent = parent,
-	}) 
+	})
 
 	local label = Elements.Create("TextLabel", {
 		Size = UDim2.new(1, -120, 1, 0),
@@ -1362,14 +1343,13 @@ function Toggle.New(parent, id, options, library)
 		TextSize = 13,
 		Font = Enum.Font.GothamMedium,
 		Parent = frame,
-	}) 
+	})
 	Theme.Register(label, "TextColor3", "Text")
 
 	if options.Tooltip then
 		Tooltip.Attach(frame, options.Tooltip)
 	end
 
-	-- SubHolder on right for switch and embedded sub-components (Colorpicker/Keybind)
 	local subHolder = Elements.Create("Frame", {
 		Size = UDim2.new(0, 0, 1, 0),
 		AutomaticSize = Enum.AutomaticSize.X,
@@ -1377,7 +1357,7 @@ function Toggle.New(parent, id, options, library)
 		Position = UDim2.new(1, -2, 0.5, 0),
 		BackgroundTransparency = 1,
 		Parent = frame,
-	}) 
+	})
 
 	local subLayout = Elements.Create("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
@@ -1394,7 +1374,7 @@ function Toggle.New(parent, id, options, library)
 		BackgroundColor3 = state and Theme.Get("Accent") or Theme.Get("Surface"),
 		LayoutOrder = 10,
 		Parent = subHolder,
-	}) 
+	})
 	Elements.Round(switchBg, 9)
 	local switchStroke = Elements.Stroke(switchBg, Theme.Get("Border"), 1, 0)
 	Theme.Register(switchStroke, "Color", "Border")
@@ -1405,7 +1385,7 @@ function Toggle.New(parent, id, options, library)
 		Position = state and UDim2.new(1, -16, 0.5, 0) or UDim2.new(0, 2, 0.5, 0),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		Parent = switchBg,
-	}) 
+	})
 	Elements.Round(knob, 7)
 
 	local tweenInfo = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -1420,7 +1400,6 @@ function Toggle.New(parent, id, options, library)
 		end
 	end
 
-	-- Listen to dynamic theme changes so active toggles update their accent color live!
 	local themeConn = Theme.Changed:Connect(function(palette)
 		if state then
 			switchBg.BackgroundColor3 = palette.Accent
@@ -1474,13 +1453,12 @@ local Tooltip = _require("Core.Tooltip")
 
 local Slider = {}
 
-
 local function round(val, decimals)
 	local factor = 10 ^ (decimals or 0)
 	return math.round(val * factor) / factor
 end
 
-function Slider.New(parent, id, options, registry: { [string]: any })
+function Slider.New(parent, id, options, registry)
 	local minVal = options.Min or 0
 	local maxVal = options.Max or 100
 	local roundingDecimals = options.Rounding or 0
@@ -1493,7 +1471,7 @@ function Slider.New(parent, id, options, registry: { [string]: any })
 		Size = UDim2.new(1, 0, 0, 42),
 		BackgroundTransparency = 1,
 		Parent = parent,
-	}) 
+	})
 
 	if options.Tooltip then
 		Tooltip.Attach(frame, options.Tooltip)
@@ -1514,7 +1492,7 @@ function Slider.New(parent, id, options, registry: { [string]: any })
 		TextSize = 13,
 		Font = Enum.Font.GothamMedium,
 		Parent = header,
-	}) 
+	})
 	Theme.Register(label, "TextColor3", "Text")
 
 	local valLabel = Elements.Create("TextLabel", {
@@ -1527,7 +1505,7 @@ function Slider.New(parent, id, options, registry: { [string]: any })
 		TextSize = 12,
 		Font = Enum.Font.Gotham,
 		Parent = header,
-	}) 
+	})
 	Theme.Register(valLabel, "TextColor3", "SubText")
 
 	local track = Elements.Create("TextButton", {
@@ -1537,7 +1515,7 @@ function Slider.New(parent, id, options, registry: { [string]: any })
 		Text = "",
 		AutoButtonColor = false,
 		Parent = frame,
-	}) 
+	})
 	Elements.Round(track, 5)
 	local trackStroke = Elements.Stroke(track, Theme.Get("Border"), 1, 0)
 	Theme.Register(track, "BackgroundColor3", "Surface")
@@ -1549,7 +1527,7 @@ function Slider.New(parent, id, options, registry: { [string]: any })
 		Size = UDim2.new(percent, 0, 1, 0),
 		BackgroundColor3 = Theme.Get("Accent"),
 		Parent = track,
-	}) 
+	})
 	Elements.Round(fill, 5)
 	Theme.Register(fill, "BackgroundColor3", "Accent")
 
@@ -1558,7 +1536,6 @@ function Slider.New(parent, id, options, registry: { [string]: any })
 		Callback = callback,
 		SetValue = function(self, newVal)
 			local clamped = math.clamp(round(newVal, roundingDecimals), minVal, maxVal)
-			-- Prevent unneeded tweens and duplicate callbacks when value hasn't changed!
 			if clamped == self.Value and fill.Size.X.Scale == (clamped - minVal) / (maxVal - minVal) then
 				return
 			end
@@ -1587,7 +1564,6 @@ function Slider.New(parent, id, options, registry: { [string]: any })
 	local c1 = track.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			isDragging = true
-			-- Disable parent scrolling on mobile/touch while scrubbing
 			parentScroll = track:FindFirstAncestorOfClass("ScrollingFrame")
 			if parentScroll then
 				originalScrollState = parentScroll.ScrollingEnabled
@@ -1635,18 +1611,20 @@ local Tooltip = _require("Core.Tooltip")
 
 local Input = {}
 
-
-function Input.New(parent, id, options, registry: { [string]: any })
+function Input.New(parent, id, options, registry)
 	local currentText = options.Default or ""
 	local callback = options.Callback or function() end
-	local isFinishedMode = if options.Finished ~= nil then options.Finished else true
+	local isFinishedMode = true
+	if options.Finished ~= nil then
+		isFinishedMode = options.Finished
+	end
 
 	local frame = Elements.Create("Frame", {
 		Name = id .. "_Input",
 		Size = UDim2.new(1, 0, 0, 48),
 		BackgroundTransparency = 1,
 		Parent = parent,
-	}) 
+	})
 
 	if options.Tooltip then
 		Tooltip.Attach(frame, options.Tooltip)
@@ -1661,7 +1639,7 @@ function Input.New(parent, id, options, registry: { [string]: any })
 		TextSize = 13,
 		Font = Enum.Font.GothamMedium,
 		Parent = frame,
-	}) 
+	})
 	Theme.Register(label, "TextColor3", "Text")
 
 	local inputBg = Elements.Create("Frame", {
@@ -1669,7 +1647,7 @@ function Input.New(parent, id, options, registry: { [string]: any })
 		Position = UDim2.new(0, 0, 0, 20),
 		BackgroundColor3 = Theme.Get("Surface"),
 		Parent = frame,
-	}) 
+	})
 	Elements.Round(inputBg, 6)
 	local stroke = Elements.Stroke(inputBg, Theme.Get("Border"), 1, 0)
 	Theme.Register(inputBg, "BackgroundColor3", "Surface")
@@ -1688,7 +1666,7 @@ function Input.New(parent, id, options, registry: { [string]: any })
 		Font = Enum.Font.Gotham,
 		ClearTextOnFocus = false,
 		Parent = inputBg,
-	}) 
+	})
 	Theme.Register(textBox, "TextColor3", "Text")
 	Theme.Register(textBox, "PlaceholderColor3", "SubText")
 
@@ -1708,7 +1686,6 @@ function Input.New(parent, id, options, registry: { [string]: any })
 	end)
 
 	if isFinishedMode then
-		-- Only fire when user presses Enter or clicks outside
 		textBox.FocusLost:Connect(function(enterPressed)
 			Elements.Tween(stroke, TweenInfo.new(0.15), { Color = Theme.Get("Border") })
 			local text = textBox.Text
@@ -1720,12 +1697,11 @@ function Input.New(parent, id, options, registry: { [string]: any })
 			task.spawn(inputObj.Callback, text)
 		end)
 	else
-		-- Only fire on live text change
 		textBox.FocusLost:Connect(function()
 			Elements.Tween(stroke, TweenInfo.new(0.15), { Color = Theme.Get("Border") })
 		end)
 
-		textBox:GetPropertyChangedSignal("Text")(function()
+		textBox:GetPropertyChangedSignal("Text"):Connect(function()
 			local text = textBox.Text
 			if options.Numeric then
 				text = string.gsub(text, "[^%d.-]", "")
@@ -1750,19 +1726,15 @@ local Popover = _require("Components.Popover")
 
 local Dropdown = {}
 
-	Default,
-	Multi,
-	Tooltip,
-	Callback: ((any) -> ())?,
-}
-
-function Dropdown.New(parent, id, options, registry: { [string]: any })
+function Dropdown.New(parent, id, options, registry)
 	local values = options.Values or {}
 	local isMulti = options.Multi or false
 	local callback = options.Callback or function() end
 	local isOpen = false
 
-	local currentValue = {}
+	local currentValue
+	if isMulti then
+		currentValue = {}
 		if typeof(options.Default) == "table" then
 			for _, v in ipairs(options.Default) do
 				currentValue[v] = true
@@ -1777,7 +1749,7 @@ function Dropdown.New(parent, id, options, registry: { [string]: any })
 		Size = UDim2.new(1, 0, 0, 48),
 		BackgroundTransparency = 1,
 		Parent = parent,
-	}) 
+	})
 
 	if options.Tooltip then
 		Tooltip.Attach(frame, options.Tooltip)
@@ -1792,7 +1764,7 @@ function Dropdown.New(parent, id, options, registry: { [string]: any })
 		TextSize = 13,
 		Font = Enum.Font.GothamMedium,
 		Parent = frame,
-	}) 
+	})
 	Theme.Register(label, "TextColor3", "Text")
 
 	local box = Elements.Create("TextButton", {
@@ -1802,7 +1774,7 @@ function Dropdown.New(parent, id, options, registry: { [string]: any })
 		Text = "",
 		AutoButtonColor = false,
 		Parent = frame,
-	}) 
+	})
 	Elements.Round(box, 6)
 	local boxStroke = Elements.Stroke(box, Theme.Get("Border"), 1, 0)
 	Theme.Register(box, "BackgroundColor3", "Surface")
@@ -1819,7 +1791,7 @@ function Dropdown.New(parent, id, options, registry: { [string]: any })
 		TextSize = 13,
 		Font = Enum.Font.Gotham,
 		Parent = box,
-	}) 
+	})
 	Theme.Register(valLabel, "TextColor3", "Text")
 
 	local arrow = Elements.Create("TextLabel", {
@@ -1831,16 +1803,15 @@ function Dropdown.New(parent, id, options, registry: { [string]: any })
 		TextSize = 12,
 		Font = Enum.Font.GothamBold,
 		Parent = box,
-	}) 
+	})
 	Theme.Register(arrow, "TextColor3", "SubText")
 
-	-- Popover List Frame (rendered in Popover layer to prevent clipping!)
 	local listFrame = Elements.Create("Frame", {
 		Name = id .. "_PopoverList",
 		Size = UDim2.new(0, 240, 0, 160),
 		BackgroundColor3 = Theme.Get("Secondary"),
 		Visible = false,
-	}) 
+	})
 	Elements.Round(listFrame, 6)
 	local listStroke = Elements.Stroke(listFrame, Theme.Get("Border"), 1, 0)
 	Theme.Register(listFrame, "BackgroundColor3", "Secondary")
@@ -1853,7 +1824,6 @@ function Dropdown.New(parent, id, options, registry: { [string]: any })
 		Parent = listFrame,
 	})
 
-	-- Search Input Box inside popover when values > 5
 	local searchBox = Elements.Create("TextBox", {
 		Size = UDim2.new(1, 0, 0, 24),
 		BackgroundColor3 = Theme.Get("Surface"),
@@ -1866,7 +1836,7 @@ function Dropdown.New(parent, id, options, registry: { [string]: any })
 		Visible = #values > 5,
 		LayoutOrder = 1,
 		Parent = listFrame,
-	}) 
+	})
 	Elements.Round(searchBox, 4)
 	Theme.Register(searchBox, "BackgroundColor3", "Surface")
 	Theme.Register(searchBox, "TextColor3", "Text")
@@ -1881,7 +1851,7 @@ function Dropdown.New(parent, id, options, registry: { [string]: any })
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		LayoutOrder = 2,
 		Parent = listFrame,
-	}) 
+	})
 
 	local itemsLayout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
@@ -1915,6 +1885,9 @@ function Dropdown.New(parent, id, options, registry: { [string]: any })
 			valLabel.Text = getDisplayText()
 			task.spawn(self.Callback, newVal)
 		end,
+		SetValues = function(self, newValues)
+			self.Values = newValues
+		end,
 	}
 
 	local function refreshItems(filter)
@@ -1939,7 +1912,7 @@ function Dropdown.New(parent, id, options, registry: { [string]: any })
 					Font = Enum.Font.GothamMedium,
 					AutoButtonColor = false,
 					Parent = scrollContainer,
-				}) 
+				})
 				Elements.Round(itemBtn, 4)
 
 				itemBtn.MouseButton1Click:Connect(function()
@@ -1958,11 +1931,10 @@ function Dropdown.New(parent, id, options, registry: { [string]: any })
 		end
 	end
 
-	searchBox:GetPropertyChangedSignal("Text")(function()
+	searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 		refreshItems(searchBox.Text)
 	end)
 
-	-- Theme change live update for selected item colors
 	local themeConn = Theme.Changed:Connect(function(palette)
 		valLabel.TextColor3 = palette.Text
 		if isOpen then
@@ -2005,7 +1977,7 @@ local Theme = _require("Core.Theme")
 local Notification = {}
 
 local holder = nil
-local activeQueue = {} :: { Frame }
+local activeQueue = {}
 local MAX_NOTIFICATIONS = 5
 
 function Notification.Init(gui)
@@ -2019,7 +1991,7 @@ function Notification.Init(gui)
 		BackgroundTransparency = 1,
 		ZIndex = 800,
 		Parent = gui,
-	}) 
+	})
 
 	local layout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
@@ -2029,11 +2001,9 @@ function Notification.Init(gui)
 	})
 end
 
-
 function Notification.Show(info)
 	if not holder then return end
 
-	-- Limit max stacked notifications
 	if #activeQueue >= MAX_NOTIFICATIONS then
 		local oldest = table.remove(activeQueue, 1)
 		if oldest and oldest.Parent then
@@ -2052,7 +2022,6 @@ function Notification.Show(info)
 	}
 	local typeColor = typeColors[nType] or Theme.Get("Accent")
 
-	-- Wrapper frame for UIListLayout
 	local wrapper = Elements.Create("Frame", {
 		Name = "ToastWrapper",
 		Size = UDim2.new(1, 0, 0, 0),
@@ -2060,19 +2029,18 @@ function Notification.Show(info)
 		BackgroundTransparency = 1,
 		ClipsDescendants = false,
 		Parent = holder,
-	}) 
+	})
 	table.insert(activeQueue, wrapper)
 
-	-- Inner toast frame (position can be freely tweened without UIListLayout interference)
 	local toast = Elements.Create("Frame", {
 		Name = "Toast",
 		Size = UDim2.new(1, 0, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundColor3 = Theme.Get("Secondary"),
-		Position = UDim2.new(1, 300, 0, 0), -- starts offscreen right
+		Position = UDim2.new(1, 300, 0, 0),
 		ZIndex = 801,
 		Parent = wrapper,
-	}) 
+	})
 	Elements.Round(toast, 6)
 	local stroke = Elements.Stroke(toast, Theme.Get("Border"), 1, 0)
 	Theme.Register(toast, "BackgroundColor3", "Secondary")
@@ -2096,7 +2064,7 @@ function Notification.Show(info)
 		LayoutOrder = 1,
 		ZIndex = 802,
 		Parent = toast,
-	}) 
+	})
 
 	local contentLabel = Elements.Create("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 0),
@@ -2111,7 +2079,7 @@ function Notification.Show(info)
 		LayoutOrder = 2,
 		ZIndex = 802,
 		Parent = toast,
-	}) 
+	})
 	Theme.Register(contentLabel, "TextColor3", "Text")
 
 	local barBg = Elements.Create("Frame", {
@@ -2120,16 +2088,15 @@ function Notification.Show(info)
 		LayoutOrder = 3,
 		ZIndex = 802,
 		Parent = toast,
-	}) 
+	})
 
 	local progress = Elements.Create("Frame", {
 		Size = UDim2.new(1, 0, 1, 0),
 		BackgroundColor3 = typeColor,
 		ZIndex = 803,
 		Parent = barBg,
-	}) 
+	})
 
-	-- Animate In
 	Elements.Tween(toast, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 		Position = UDim2.new(0, 0, 0, 0),
 	})
@@ -2145,12 +2112,11 @@ function Notification.Show(info)
 		isPaused = false
 	end)
 
-	-- Timer loop with pause on hover
 	task.spawn(function()
 		while timeLeft > 0 and wrapper.Parent do
 			local dt = task.wait(0.05)
 			if not isPaused then
-				timeLeft -= dt
+				timeLeft = timeLeft - dt
 				progress.Size = UDim2.new(math.clamp(timeLeft / duration, 0, 1), 0, 1, 0)
 			end
 		end
@@ -2205,21 +2171,19 @@ function Groupbox.New(parent, title, library)
 		BackgroundColor3 = Theme.Get("Secondary"),
 		ZIndex = 2,
 		Parent = parent,
-	}) 
+	})
 	Elements.Round(box, 6)
 	local boxStroke = Elements.Stroke(box, Theme.Get("Border"), 1, 0)
 	Theme.Register(box, "BackgroundColor3", "Secondary")
 	Theme.Register(boxStroke, "Color", "Border")
 	Elements.Padding(box, { Top = 10, Bottom = 10, Left = 12, Right = 12 })
 
-	-- UIListLayout for the box so header and container do not overlap!
 	local boxLayout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Padding = UDim.new(0, 8),
 		Parent = box,
 	})
 
-	-- Section Header Row
 	local headerRow = Elements.Create("Frame", {
 		Name = "HeaderRow",
 		Size = UDim2.new(1, 0, 0, 16),
@@ -2227,7 +2191,7 @@ function Groupbox.New(parent, title, library)
 		LayoutOrder = 1,
 		ZIndex = 3,
 		Parent = box,
-	}) 
+	})
 
 	local header = Elements.Create("TextLabel", {
 		Size = UDim2.new(1, -24, 1, 0),
@@ -2239,10 +2203,9 @@ function Groupbox.New(parent, title, library)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 3,
 		Parent = headerRow,
-	}) 
+	})
 	Theme.Register(header, "TextColor3", "Accent")
 
-	-- Collapse button
 	local collapseBtn = Elements.Create("TextButton", {
 		Size = UDim2.new(0, 16, 0, 16),
 		AnchorPoint = Vector2.new(1, 0.5),
@@ -2254,10 +2217,9 @@ function Groupbox.New(parent, title, library)
 		Font = Enum.Font.GothamBold,
 		ZIndex = 3,
 		Parent = headerRow,
-	}) 
+	})
 	Theme.Register(collapseBtn, "TextColor3", "SubText")
 
-	-- Children container
 	local container = Elements.Create("Frame", {
 		Name = "Container",
 		Size = UDim2.new(1, 0, 0, 0),
@@ -2266,7 +2228,7 @@ function Groupbox.New(parent, title, library)
 		LayoutOrder = 2,
 		ZIndex = 3,
 		Parent = box,
-	}) 
+	})
 
 	local layout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
@@ -2336,7 +2298,7 @@ function Groupbox.New(parent, title, library)
 				BackgroundTransparency = 1,
 				Visible = parentToggle.Value == true,
 				Parent = container,
-			}) 
+			})
 			Elements.Padding(depContainer, { Top = 0, Bottom = 0, Left = 12, Right = 0 })
 
 			local depLayout = Elements.Create("UIListLayout", {
@@ -2345,7 +2307,6 @@ function Groupbox.New(parent, title, library)
 				Parent = depContainer,
 			})
 
-			-- Vertical left indicator bar
 			local bar = Elements.Create("Frame", {
 				Size = UDim2.new(0, 2, 1, 0),
 				Position = UDim2.new(0, -6, 0, 0),
@@ -2387,7 +2348,7 @@ function Tab.New(parent, name, library)
 		BackgroundTransparency = 1,
 		Visible = false,
 		Parent = parent,
-	}) 
+	})
 
 	local leftColumn = Elements.Create("ScrollingFrame", {
 		Name = "LeftColumn",
@@ -2400,7 +2361,7 @@ function Tab.New(parent, name, library)
 		CanvasSize = UDim2.new(0, 0, 0, 0),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		Parent = page,
-	}) 
+	})
 
 	local leftLayout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
@@ -2419,7 +2380,7 @@ function Tab.New(parent, name, library)
 		CanvasSize = UDim2.new(0, 0, 0, 0),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		Parent = page,
-	}) 
+	})
 
 	local rightLayout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
@@ -2460,7 +2421,6 @@ local Tab = _require("Components.Tab")
 
 local Window = {}
 
-
 function Window.New(gui, options, library)
 	local windowSize = options.Size or UDim2.fromOffset(620, 440)
 	local tabWidth = options.TabWidth or 130
@@ -2468,7 +2428,6 @@ function Window.New(gui, options, library)
 	local isVisible = true
 	local maid = library.Maid
 
-	-- Main window frame perfectly centered using AnchorPoint
 	local main = Elements.Create("Frame", {
 		Name = "MainWindow",
 		Size = windowSize,
@@ -2477,10 +2436,9 @@ function Window.New(gui, options, library)
 		BackgroundColor3 = Theme.Get("Background"),
 		ClipsDescendants = false,
 		Parent = gui,
-	}) 
+	})
 	Elements.Round(main, 8)
 
-	-- Glass Edge (UIStroke with top-to-bottom subtle gradient)
 	local mainStroke = Elements.Stroke(main, Theme.Get("Border"), 1, 0)
 	Theme.Register(main, "BackgroundColor3", "Background")
 	Theme.Register(mainStroke, "Color", "Border")
@@ -2490,21 +2448,17 @@ function Window.New(gui, options, library)
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 40, 50)),
 	}), 90)
 
-	-- Window Scale for open/close motion
 	local mainScale = Elements.Scale(main, 1)
 
-	-- Topbar
 	local topbar = Elements.Create("Frame", {
 		Name = "Topbar",
 		Size = UDim2.new(1, 0, 0, 38),
 		BackgroundTransparency = 1,
 		Parent = main,
-	}) 
+	})
 
-	-- Drag with screen boundary clamp
 	Drag.Make(main, topbar, 0.25, maid)
 
-	-- Title and SubTitle
 	local titleLabel = Elements.Create("TextLabel", {
 		Size = UDim2.new(0, 0, 1, 0),
 		AutomaticSize = Enum.AutomaticSize.X,
@@ -2516,7 +2470,7 @@ function Window.New(gui, options, library)
 		Font = Enum.Font.GothamBold,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = topbar,
-	}) 
+	})
 	Theme.Register(titleLabel, "TextColor3", "Text")
 
 	if options.SubTitle then
@@ -2531,14 +2485,13 @@ function Window.New(gui, options, library)
 			Font = Enum.Font.Gotham,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Parent = topbar,
-		}) 
+		})
 		Theme.Register(subLabel, "TextColor3", "SubText")
-		titleLabel:GetPropertyChangedSignal("AbsoluteSize")(function()
+		titleLabel:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 			subLabel.Position = UDim2.new(0, 14 + titleLabel.AbsoluteSize.X + 4, 0, 0)
 		end)
 	end
 
-	-- Control Buttons
 	local minBtn = Elements.Create("TextButton", {
 		Size = UDim2.new(0, 24, 0, 24),
 		AnchorPoint = Vector2.new(1, 0.5),
@@ -2549,19 +2502,17 @@ function Window.New(gui, options, library)
 		TextSize = 16,
 		Font = Enum.Font.GothamBold,
 		Parent = topbar,
-	}) 
+	})
 
-	-- Topbar Divider
 	local topDivider = Elements.Create("Frame", {
 		Size = UDim2.new(1, 0, 0, 1),
 		Position = UDim2.new(0, 0, 0, 38),
 		BackgroundColor3 = Theme.Get("Border"),
 		BorderSizePixel = 0,
 		Parent = main,
-	}) 
+	})
 	Theme.Register(topDivider, "BackgroundColor3", "Border")
 
-	-- Sidebar (Tab List)
 	local sidebar = Elements.Create("ScrollingFrame", {
 		Name = "Sidebar",
 		Size = UDim2.new(0, tabWidth, 1, -64),
@@ -2572,7 +2523,7 @@ function Window.New(gui, options, library)
 		CanvasSize = UDim2.new(0, 0, 0, 0),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		Parent = main,
-	}) 
+	})
 	Elements.Padding(sidebar, { Top = 10, Bottom = 10, Left = 8, Right = 8 })
 
 	local tabListLayout = Elements.Create("UIListLayout", {
@@ -2581,27 +2532,24 @@ function Window.New(gui, options, library)
 		Parent = sidebar,
 	})
 
-	-- Sidebar Divider
 	local sideDivider = Elements.Create("Frame", {
 		Size = UDim2.new(0, 1, 1, -64),
 		Position = UDim2.new(0, tabWidth, 0, 39),
 		BackgroundColor3 = Theme.Get("Border"),
 		BorderSizePixel = 0,
 		Parent = main,
-	}) 
+	})
 	Theme.Register(sideDivider, "BackgroundColor3", "Border")
 
-	-- Pages Container
 	local pagesHolder = Elements.Create("Frame", {
 		Name = "PagesHolder",
 		Size = UDim2.new(1, -tabWidth - 1, 1, -64),
 		Position = UDim2.new(0, tabWidth + 1, 0, 39),
 		BackgroundTransparency = 1,
 		Parent = main,
-	}) 
+	})
 	Elements.Padding(pagesHolder, 12)
 
-	-- Bottom Status Bar
 	local statusBar = Elements.Create("Frame", {
 		Name = "StatusBar",
 		Size = UDim2.new(1, 0, 0, 24),
@@ -2609,7 +2557,7 @@ function Window.New(gui, options, library)
 		BackgroundColor3 = Theme.Get("Secondary"),
 		BorderSizePixel = 0,
 		Parent = main,
-	}) 
+	})
 	Elements.Round(statusBar, 4)
 	Theme.Register(statusBar, "BackgroundColor3", "Secondary")
 	Elements.Padding(statusBar, { Top = 0, Bottom = 0, Left = 12, Right = 12 })
@@ -2623,7 +2571,7 @@ function Window.New(gui, options, library)
 		Font = Enum.Font.Gotham,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = statusBar,
-	}) 
+	})
 	Theme.Register(statusLeft, "TextColor3", "SubText")
 
 	local statusRight = Elements.Create("TextLabel", {
@@ -2636,14 +2584,13 @@ function Window.New(gui, options, library)
 		Font = Enum.Font.Gotham,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Parent = statusBar,
-	}) 
+	})
 	Theme.Register(statusRight, "TextColor3", "SubText")
 
-	-- Live FPS & Ping updates
 	local frameCount = 0
 	local lastTime = os.clock()
 	local fpsConn = RunService.RenderStepped:Connect(function()
-		frameCount += 1
+		frameCount = frameCount + 1
 		local now = os.clock()
 		if now - lastTime >= 1 then
 			local fps = math.round(frameCount / (now - lastTime))
@@ -2654,7 +2601,6 @@ function Window.New(gui, options, library)
 	end)
 	maid:Give(fpsConn)
 
-	-- Floating Mobile Launcher Button
 	local launcher = Elements.Create("TextButton", {
 		Name = "VynxMobileLauncher",
 		Size = UDim2.new(0, 36, 0, 36),
@@ -2667,7 +2613,7 @@ function Window.New(gui, options, library)
 		AutoButtonColor = false,
 		ZIndex = 900,
 		Parent = gui,
-	}) 
+	})
 	Elements.Round(launcher, 18)
 	local launcherStroke = Elements.Stroke(launcher, Theme.Get("Accent"), 1.5, 0)
 	Theme.Register(launcher, "BackgroundColor3", "Secondary")
@@ -2695,7 +2641,7 @@ function Window.New(gui, options, library)
 				Font = Enum.Font.GothamMedium,
 				AutoButtonColor = false,
 				Parent = sidebar,
-			}) 
+			})
 			Elements.Round(tabBtn, 5)
 
 			local function selectTab()
@@ -2715,7 +2661,6 @@ function Window.New(gui, options, library)
 				})
 			end
 
-			-- Live theme change: update active tab highlight
 			local themeConn = Theme.Changed:Connect(function(palette)
 				if currentTab == newTab then
 					tabBtn.TextColor3 = palette.Accent
@@ -2793,14 +2738,14 @@ local Notification = _require("Components.Notification")
 local Watermark = _require("Components.Watermark")
 
 local Library = {
-	Toggles = {} :: { [string]: any },
-	Options = {} :: { [string]: any },
+	Toggles = {},
+	Options = {},
 	Theme = Theme,
 	SaveManager = SaveManager,
-	ScreenGui = nil ,
-	ActiveWindow = nil ,
-	ActiveWatermark = nil ,
-	UnloadSignals = {} :: { () -> () },
+	ScreenGui = nil,
+	ActiveWindow = nil,
+	ActiveWatermark = nil,
+	UnloadSignals = {},
 	Maid = Maid.new(),
 }
 
@@ -2812,7 +2757,6 @@ local function getGuiParent()
 		if ok and h then return h end
 	end
 
-	-- Try CoreGui with pcall (in Studio, CoreGui write requires security capabilities)
 	local okCore = pcall(function()
 		local test = Instance.new("Folder")
 		test.Parent = CoreGui
@@ -2822,7 +2766,6 @@ local function getGuiParent()
 		return CoreGui
 	end
 
-	-- Fallback to PlayerGui for Roblox Studio & restricted runners
 	local player = Players.LocalPlayer or Players.PlayerAdded:Wait()
 	local playerGui = player:FindFirstChildOfClass("PlayerGui")
 	if playerGui then
@@ -2841,9 +2784,9 @@ function Library:InitGui()
 		Name = "vynx_" .. string.sub(tostring(math.random()), 3, 8),
 		ResetOnSpawn = false,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-		IgnoreGuiInset = true, -- Prevents topbar 36px offset discrepancies
+		IgnoreGuiInset = true,
 		Parent = getGuiParent(),
-	}) 
+	})
 
 	if typeof(syn) == "table" and typeof(syn.protect_gui) == "function" then
 		pcall(function() syn.protect_gui(gui) end)
@@ -2863,7 +2806,7 @@ function Library:CreateWindow(options)
 	return win
 end
 
-function Library:Notify(info: { Title, Content, Type: ("Info" | "Success" | "Warn" | "Error")?, Duration: number? })
+function Library:Notify(info)
 	if not self.ScreenGui then
 		self:InitGui()
 	end
@@ -2890,7 +2833,7 @@ function Library:SetTheme(nameOrPalette)
 	Theme.SetTheme(nameOrPalette)
 end
 
-function Library:OnUnload(callback: () -> ())
+function Library:OnUnload(callback)
 	table.insert(self.UnloadSignals, callback)
 end
 

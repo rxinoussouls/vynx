@@ -1,20 +1,19 @@
---!strict
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Drag = {}
 
-function Drag.Make(target: GuiObject, handle: GuiObject, smoothness: number?, maid: any?)
+function Drag.Make(target, handle, smoothness, maid)
 	local alpha = smoothness or 0.25
 	local dragging = false
 	local dragStartPos = Vector2.zero
 	local frameStartPos = UDim2.new()
 	local targetPos = target.Position
 
-	local dragInput: InputObject? = nil
+	local dragInput = nil
 
-	local function clampToScreen(pos: UDim2): UDim2
+	local function clampToScreen(pos)
 		local camera = Workspace.CurrentCamera
 		local viewport = camera and camera.ViewportSize or Vector2.new(1920, 1080)
 		local size = target.AbsoluteSize
@@ -34,7 +33,7 @@ function Drag.Make(target: GuiObject, handle: GuiObject, smoothness: number?, ma
 		return UDim2.fromOffset(clampedX, clampedY)
 	end
 
-	local c1 = handle.InputBegan:Connect(function(input: InputObject)
+	local c1 = handle.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
 			dragStartPos = Vector2.new(input.Position.X, input.Position.Y)
@@ -52,7 +51,7 @@ function Drag.Make(target: GuiObject, handle: GuiObject, smoothness: number?, ma
 		end
 	end)
 
-	local c2 = UserInputService.InputChanged:Connect(function(input: InputObject)
+	local c2 = UserInputService.InputChanged:Connect(function(input)
 		if dragging and (input == dragInput or input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			local delta = Vector2.new(input.Position.X, input.Position.Y) - dragStartPos
 			local proposed = UDim2.new(
@@ -65,7 +64,7 @@ function Drag.Make(target: GuiObject, handle: GuiObject, smoothness: number?, ma
 		end
 	end)
 
-	local c3 = RunService.RenderStepped:Connect(function(dt: number)
+	local c3 = RunService.RenderStepped:Connect(function(dt)
 		if not target.Parent then return end
 		if smoothness and smoothness > 0 then
 			local currentX = target.Position.X.Offset

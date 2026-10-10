@@ -1,4 +1,3 @@
---!strict
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Tooltip = require(script.Parent.Parent.Core.Tooltip)
@@ -6,19 +5,11 @@ local Popover = require(script.Parent.Popover)
 
 local Colorpicker = {}
 
-export type ColorpickerOptions = {
-	Text: string?,
-	Default: Color3?,
-	Transparency: number?,
-	Tooltip: string?,
-	Callback: ((Color3, number) -> ())?,
-}
-
-local function toHex(c: Color3): string
+local function toHex(c)
 	return string.format("#%02X%02X%02X", math.floor(c.R * 255), math.floor(c.G * 255), math.floor(c.B * 255))
 end
 
-local function fromHex(hex: string): Color3?
+local function fromHex(hex)
 	local clean = string.gsub(hex, "[#%s]", "")
 	if #clean == 6 then
 		local r = tonumber(string.sub(clean, 1, 2), 16)
@@ -31,7 +22,7 @@ local function fromHex(hex: string): Color3?
 	return nil
 end
 
-function Colorpicker.New(parent: GuiObject, id: string, options: ColorpickerOptions, registry: { [string]: any }, isEmbedded: boolean?)
+function Colorpicker.New(parent, id, options, registry, isEmbedded)
 	local currentColor = options.Default or Color3.fromRGB(138, 75, 255)
 	local currentAlpha = options.Transparency or 0
 	local callback = options.Callback or function() end
@@ -42,7 +33,7 @@ function Colorpicker.New(parent: GuiObject, id: string, options: ColorpickerOpti
 		Size = isEmbedded and UDim2.new(0, 32, 0, 18) or UDim2.new(1, 0, 0, 26),
 		BackgroundTransparency = 1,
 		Parent = parent,
-	}) :: Frame
+	})
 
 	if options.Tooltip then
 		Tooltip.Attach(frame, options.Tooltip)
@@ -58,7 +49,7 @@ function Colorpicker.New(parent: GuiObject, id: string, options: ColorpickerOpti
 			TextSize = 13,
 			Font = Enum.Font.GothamMedium,
 			Parent = frame,
-		}) :: TextLabel
+		})
 		Theme.Register(label, "TextColor3", "Text")
 	end
 
@@ -70,18 +61,17 @@ function Colorpicker.New(parent: GuiObject, id: string, options: ColorpickerOpti
 		Text = "",
 		AutoButtonColor = false,
 		Parent = frame,
-	}) :: TextButton
+	})
 	Elements.Round(previewBtn, 4)
 	local previewStroke = Elements.Stroke(previewBtn, Theme.Get("Border"), 1, 0)
 	Theme.Register(previewStroke, "Color", "Border")
 
-	-- Palette Popover Frame (Opened in ScreenGui Popover layer!)
 	local popover = Elements.Create("Frame", {
 		Name = id .. "_PopoverPalette",
 		Size = UDim2.new(0, 180, 0, 140),
 		BackgroundColor3 = Theme.Get("Secondary"),
 		Visible = false,
-	}) :: Frame
+	})
 	Elements.Round(popover, 6)
 	local popoverStroke = Elements.Stroke(popover, Theme.Get("Border"), 1, 0)
 	Theme.Register(popover, "BackgroundColor3", "Secondary")
@@ -94,7 +84,6 @@ function Colorpicker.New(parent: GuiObject, id: string, options: ColorpickerOpti
 		Parent = popover,
 	})
 
-	-- Hex Code input row
 	local hexBox = Elements.Create("TextBox", {
 		Size = UDim2.new(1, 0, 0, 22),
 		BackgroundColor3 = Theme.Get("Surface"),
@@ -105,12 +94,11 @@ function Colorpicker.New(parent: GuiObject, id: string, options: ColorpickerOpti
 		ClearTextOnFocus = false,
 		LayoutOrder = 1,
 		Parent = popover,
-	}) :: TextBox
+	})
 	Elements.Round(hexBox, 4)
 	Theme.Register(hexBox, "BackgroundColor3", "Surface")
 	Theme.Register(hexBox, "TextColor3", "Text")
 
-	-- Quick Swatches Grid
 	local swatchGridFrame = Elements.Create("Frame", {
 		Size = UDim2.new(1, 0, 0, 56),
 		BackgroundTransparency = 1,
@@ -140,7 +128,7 @@ function Colorpicker.New(parent: GuiObject, id: string, options: ColorpickerOpti
 		Value = currentColor,
 		Transparency = currentAlpha,
 		Callback = callback,
-		SetValue = function(self: any, newCol: Color3, newAlpha: number?)
+		SetValue = function(self, newCol, newAlpha)
 			self.Value = newCol
 			if newAlpha ~= nil then
 				self.Transparency = newAlpha
@@ -157,7 +145,7 @@ function Colorpicker.New(parent: GuiObject, id: string, options: ColorpickerOpti
 			Text = "",
 			AutoButtonColor = false,
 			Parent = swatchGridFrame,
-		}) :: TextButton
+		})
 		Elements.Round(sBtn, 4)
 		Elements.Stroke(sBtn, Color3.fromRGB(30, 30, 40), 1, 0)
 

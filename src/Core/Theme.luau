@@ -1,17 +1,6 @@
---!strict
 local TweenService = game:GetService("TweenService")
 
 local Theme = {}
-
-export type ThemeColors = {
-	Accent: Color3,
-	Background: Color3,
-	Secondary: Color3,
-	Surface: Color3,
-	Border: Color3,
-	Text: Color3,
-	SubText: Color3,
-}
 
 Theme.Presets = {
 	Obsidian = {
@@ -56,28 +45,27 @@ Theme.Current = Theme.Presets.Obsidian
 Theme.ChangedEvent = Instance.new("BindableEvent")
 Theme.Changed = Theme.ChangedEvent.Event
 
--- Weak table map: Instance -> { [PropertyName]: TokenKey }
-Theme.Registry = setmetatable({}, { __mode = "k" }) :: { [Instance]: { [string]: string } }
+Theme.Registry = setmetatable({}, { __mode = "k" })
 
-function Theme.Register(instance: Instance, property: string, token: string): Instance
+function Theme.Register(instance, property, token)
 	if not Theme.Registry[instance] then
 		Theme.Registry[instance] = {}
 	end
 	Theme.Registry[instance][property] = token
 
-	local color = (Theme.Current :: any)[token]
+	local color = Theme.Current[token]
 	if color then
-		(instance :: any)[property] = color
+		instance[property] = color
 	end
 	return instance
 end
 
-function Theme.Get(token: string): Color3
-	return (Theme.Current :: any)[token] or Color3.fromRGB(255, 255, 255)
+function Theme.Get(token)
+	return Theme.Current[token] or Color3.fromRGB(255, 255, 255)
 end
 
-function Theme.SetTheme(nameOrPalette: string | ThemeColors, duration: number?)
-	local palette: ThemeColors
+function Theme.SetTheme(nameOrPalette, duration)
+	local palette
 	if typeof(nameOrPalette) == "string" then
 		palette = Theme.Presets[nameOrPalette] or Theme.Presets.Obsidian
 	else
@@ -90,7 +78,7 @@ function Theme.SetTheme(nameOrPalette: string | ThemeColors, duration: number?)
 		if instance and instance.Parent then
 			local goals = {}
 			for prop, token in pairs(propMap) do
-				local color = (palette :: any)[token]
+				local color = palette[token]
 				if color then
 					goals[prop] = color
 				end

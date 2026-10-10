@@ -1,4 +1,3 @@
---!strict
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
 
@@ -12,7 +11,7 @@ local Input = require(script.Parent.Input)
 
 local Groupbox = {}
 
-function Groupbox.New(parent: GuiObject, title: string, library: any)
+function Groupbox.New(parent, title, library)
 	local isCollapsed = false
 
 	local box = Elements.Create("Frame", {
@@ -22,21 +21,19 @@ function Groupbox.New(parent: GuiObject, title: string, library: any)
 		BackgroundColor3 = Theme.Get("Secondary"),
 		ZIndex = 2,
 		Parent = parent,
-	}) :: Frame
+	})
 	Elements.Round(box, 6)
 	local boxStroke = Elements.Stroke(box, Theme.Get("Border"), 1, 0)
 	Theme.Register(box, "BackgroundColor3", "Secondary")
 	Theme.Register(boxStroke, "Color", "Border")
 	Elements.Padding(box, { Top = 10, Bottom = 10, Left = 12, Right = 12 })
 
-	-- UIListLayout for the box so header and container do not overlap!
 	local boxLayout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Padding = UDim.new(0, 8),
 		Parent = box,
 	})
 
-	-- Section Header Row
 	local headerRow = Elements.Create("Frame", {
 		Name = "HeaderRow",
 		Size = UDim2.new(1, 0, 0, 16),
@@ -44,7 +41,7 @@ function Groupbox.New(parent: GuiObject, title: string, library: any)
 		LayoutOrder = 1,
 		ZIndex = 3,
 		Parent = box,
-	}) :: Frame
+	})
 
 	local header = Elements.Create("TextLabel", {
 		Size = UDim2.new(1, -24, 1, 0),
@@ -56,10 +53,9 @@ function Groupbox.New(parent: GuiObject, title: string, library: any)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 3,
 		Parent = headerRow,
-	}) :: TextLabel
+	})
 	Theme.Register(header, "TextColor3", "Accent")
 
-	-- Collapse button
 	local collapseBtn = Elements.Create("TextButton", {
 		Size = UDim2.new(0, 16, 0, 16),
 		AnchorPoint = Vector2.new(1, 0.5),
@@ -71,10 +67,9 @@ function Groupbox.New(parent: GuiObject, title: string, library: any)
 		Font = Enum.Font.GothamBold,
 		ZIndex = 3,
 		Parent = headerRow,
-	}) :: TextButton
+	})
 	Theme.Register(collapseBtn, "TextColor3", "SubText")
 
-	-- Children container
 	local container = Elements.Create("Frame", {
 		Name = "Container",
 		Size = UDim2.new(1, 0, 0, 0),
@@ -83,7 +78,7 @@ function Groupbox.New(parent: GuiObject, title: string, library: any)
 		LayoutOrder = 2,
 		ZIndex = 3,
 		Parent = box,
-	}) :: Frame
+	})
 
 	local layout = Elements.Create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
@@ -100,28 +95,28 @@ function Groupbox.New(parent: GuiObject, title: string, library: any)
 	local boxObj = {
 		Frame = box,
 		Container = container,
-		AddToggle = function(self: any, id: string, options: any)
+		AddToggle = function(self, id, options)
 			return Toggle.New(container, id, options, library)
 		end,
-		AddButton = function(self: any, options: any)
+		AddButton = function(self, options)
 			return Button.New(container, options)
 		end,
-		AddSlider = function(self: any, id: string, options: any)
+		AddSlider = function(self, id, options)
 			return Slider.New(container, id, options, library.Options)
 		end,
-		AddDropdown = function(self: any, id: string, options: any)
+		AddDropdown = function(self, id, options)
 			return Dropdown.New(container, id, options, library.Options)
 		end,
-		AddColorpicker = function(self: any, id: string, options: any)
+		AddColorpicker = function(self, id, options)
 			return Colorpicker.New(container, id, options, library.Options)
 		end,
-		AddKeybind = function(self: any, id: string, options: any)
+		AddKeybind = function(self, id, options)
 			return Keybind.New(container, id, options, library.Options)
 		end,
-		AddInput = function(self: any, id: string, options: any)
+		AddInput = function(self, id, options)
 			return Input.New(container, id, options, library.Options)
 		end,
-		AddDivider = function(self: any)
+		AddDivider = function(self)
 			local div = Elements.Create("Frame", {
 				Size = UDim2.new(1, 0, 0, 1),
 				BackgroundColor3 = Theme.Get("Border"),
@@ -131,7 +126,7 @@ function Groupbox.New(parent: GuiObject, title: string, library: any)
 			Theme.Register(div, "BackgroundColor3", "Border")
 			return div
 		end,
-		AddLabel = function(self: any, text: string)
+		AddLabel = function(self, text)
 			local lbl = Elements.Create("TextLabel", {
 				Size = UDim2.new(1, 0, 0, 16),
 				BackgroundTransparency = 1,
@@ -145,7 +140,7 @@ function Groupbox.New(parent: GuiObject, title: string, library: any)
 			Theme.Register(lbl, "TextColor3", "Text")
 			return lbl
 		end,
-		AddDependencyBox = function(self: any, parentToggle: any)
+		AddDependencyBox = function(self, parentToggle)
 			local depContainer = Elements.Create("Frame", {
 				Name = "DependencyBox",
 				Size = UDim2.new(1, 0, 0, 0),
@@ -153,7 +148,7 @@ function Groupbox.New(parent: GuiObject, title: string, library: any)
 				BackgroundTransparency = 1,
 				Visible = parentToggle.Value == true,
 				Parent = container,
-			}) :: Frame
+			})
 			Elements.Padding(depContainer, { Top = 0, Bottom = 0, Left = 12, Right = 0 })
 
 			local depLayout = Elements.Create("UIListLayout", {
@@ -162,7 +157,6 @@ function Groupbox.New(parent: GuiObject, title: string, library: any)
 				Parent = depContainer,
 			})
 
-			-- Vertical left indicator bar
 			local bar = Elements.Create("Frame", {
 				Size = UDim2.new(0, 2, 1, 0),
 				Position = UDim2.new(0, -6, 0, 0),
@@ -173,7 +167,7 @@ function Groupbox.New(parent: GuiObject, title: string, library: any)
 			Theme.Register(bar, "BackgroundColor3", "Accent")
 
 			local oldCb = parentToggle.Callback
-			parentToggle.Callback = function(val: boolean)
+			parentToggle.Callback = function(val)
 				depContainer.Visible = val
 				if oldCb then oldCb(val) end
 			end

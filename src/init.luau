@@ -1,4 +1,3 @@
---!strict
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 
@@ -13,26 +12,25 @@ local Notification = require(script.Components.Notification)
 local Watermark = require(script.Components.Watermark)
 
 local Library = {
-	Toggles = {} :: { [string]: any },
-	Options = {} :: { [string]: any },
+	Toggles = {},
+	Options = {},
 	Theme = Theme,
 	SaveManager = SaveManager,
-	ScreenGui = nil :: ScreenGui?,
-	ActiveWindow = nil :: any,
-	ActiveWatermark = nil :: any,
-	UnloadSignals = {} :: { () -> () },
+	ScreenGui = nil,
+	ActiveWindow = nil,
+	ActiveWatermark = nil,
+	UnloadSignals = {},
 	Maid = Maid.new(),
 }
 
 SaveManager:SetLibrary(Library)
 
-local function getGuiParent(): Instance
+local function getGuiParent()
 	if typeof(gethui) == "function" then
 		local ok, h = pcall(gethui)
 		if ok and h then return h end
 	end
 
-	-- Try CoreGui with pcall (in Studio, CoreGui write requires security capabilities)
 	local okCore = pcall(function()
 		local test = Instance.new("Folder")
 		test.Parent = CoreGui
@@ -42,7 +40,6 @@ local function getGuiParent(): Instance
 		return CoreGui
 	end
 
-	-- Fallback to PlayerGui for Roblox Studio & restricted runners
 	local player = Players.LocalPlayer or Players.PlayerAdded:Wait()
 	local playerGui = player:FindFirstChildOfClass("PlayerGui")
 	if playerGui then
@@ -52,7 +49,7 @@ local function getGuiParent(): Instance
 	return CoreGui
 end
 
-function Library:InitGui(): ScreenGui
+function Library:InitGui()
 	if self.ScreenGui and self.ScreenGui.Parent then
 		return self.ScreenGui
 	end
@@ -61,12 +58,12 @@ function Library:InitGui(): ScreenGui
 		Name = "vynx_" .. string.sub(tostring(math.random()), 3, 8),
 		ResetOnSpawn = false,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-		IgnoreGuiInset = true, -- Prevents topbar 36px offset discrepancies
+		IgnoreGuiInset = true,
 		Parent = getGuiParent(),
-	}) :: ScreenGui
+	})
 
-	if typeof(syn) == "table" and typeof((syn :: any).protect_gui) == "function" then
-		pcall(function() (syn :: any).protect_gui(gui) end)
+	if typeof(syn) == "table" and typeof(syn.protect_gui) == "function" then
+		pcall(function() syn.protect_gui(gui) end)
 	end
 
 	self.ScreenGui = gui
@@ -76,21 +73,21 @@ function Library:InitGui(): ScreenGui
 	return gui
 end
 
-function Library:CreateWindow(options: any)
+function Library:CreateWindow(options)
 	local gui = self:InitGui()
 	local win = Window.New(gui, options, self)
 	self.ActiveWindow = win
 	return win
 end
 
-function Library:Notify(info: { Title: string?, Content: string, Type: ("Info" | "Success" | "Warn" | "Error")?, Duration: number? })
+function Library:Notify(info)
 	if not self.ScreenGui then
 		self:InitGui()
 	end
 	Notification.Show(info)
 end
 
-function Library:SetWatermark(text: string)
+function Library:SetWatermark(text)
 	local gui = self:InitGui()
 	if not self.ActiveWatermark then
 		self.ActiveWatermark = Watermark.New(gui, text)
@@ -100,17 +97,17 @@ function Library:SetWatermark(text: string)
 	return self.ActiveWatermark
 end
 
-function Library:SetWatermarkVisibility(visible: boolean)
+function Library:SetWatermarkVisibility(visible)
 	if self.ActiveWatermark then
 		self.ActiveWatermark:SetVisible(visible)
 	end
 end
 
-function Library:SetTheme(nameOrPalette: any)
+function Library:SetTheme(nameOrPalette)
 	Theme.SetTheme(nameOrPalette)
 end
 
-function Library:OnUnload(callback: () -> ())
+function Library:OnUnload(callback)
 	table.insert(self.UnloadSignals, callback)
 end
 

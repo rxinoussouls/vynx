@@ -29,38 +29,6 @@ MODULES = [
     ("Main", os.path.join(SRC_DIR, "init.luau")),
 ]
 
-def clean_and_strip_types(content: str) -> str:
-    lines = content.splitlines()
-    cleaned = []
-    in_type_block = False
-    for line in lines:
-        stripped = line.strip()
-        if stripped == "--!strict" or stripped == "--!nonstrict":
-            continue
-        if stripped.startswith("export type") or (stripped.startswith("type ") and "=" in stripped):
-            if "{" in stripped and "}" not in stripped:
-                in_type_block = True
-            continue
-        if in_type_block:
-            if "}" in stripped:
-                in_type_block = False
-            continue
-        cleaned.append(line)
-    
-    code = "\n".join(cleaned)
-    # Strip cast: :: Type
-    code = re.sub(r'::\s*[A-Za-z0-9_?|.]+', '', code)
-    # Strip (x ) left from (x :: any)
-    code = re.sub(r'\(([a-zA-Z0-9_.]+)\s+\)', r'\1', code)
-    # Strip variable annotations: local x: Type = ...
-    code = re.sub(r'local\s+([a-zA-Z0-9_]+)\s*:\s*[A-Za-z0-9_?|.\s{}]+\s*=', r'local \1 =', code)
-    # Strip return types: ): (Type, ...) or ): Type
-    code = re.sub(r'\)\s*:\s*\([A-Za-z0-9_?|.,\s]+\)', ')', code)
-    code = re.sub(r'\)\s*:\s*[A-Za-z0-9_?|.]+', ')', code)
-    # Strip parameter types: var: Type
-    code = re.sub(r'([a-zA-Z0-9_]+)\s*:\s*[A-Za-z0-9_?|.]+(?=[,\)])', r'\1', code)
-    return code
-
 def generate_bundle():
     os.makedirs(BUILD_DIR, exist_ok=True)
     
@@ -86,7 +54,7 @@ def generate_bundle():
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
         
-        # Replace requires with _require aliases
+        # Exact require substitutions
         content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Elements\)', '_require("Core.Elements")', content)
         content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Theme\)', '_require("Core.Theme")', content)
         content = re.sub(r'require\(script\.Parent\.Parent\.Core\.Maid\)', '_require("Core.Maid")', content)
@@ -119,10 +87,8 @@ def generate_bundle():
         content = re.sub(r'require\(script\.Components\.Notification\)', '_require("Components.Notification")', content)
         content = re.sub(r'require\(script\.Components\.Watermark\)', '_require("Components.Watermark")', content)
 
-        clean = clean_and_strip_types(content)
-        
         parts.append(f"_modules['{mod_name}'] = function()")
-        parts.append(clean)
+        parts.append(content.strip())
         parts.append("end\n")
 
     parts.append("return _require('Main')")

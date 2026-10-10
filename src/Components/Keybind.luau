@@ -1,4 +1,3 @@
---!strict
 local UserInputService = game:GetService("UserInputService")
 local Elements = require(script.Parent.Parent.Core.Elements)
 local Theme = require(script.Parent.Parent.Core.Theme)
@@ -6,16 +5,8 @@ local Tooltip = require(script.Parent.Parent.Core.Tooltip)
 
 local Keybind = {}
 
-export type KeybindOptions = {
-	Text: string?,
-	Default: Enum.KeyCode?,
-	Mode: ("Toggle" | "Hold" | "Always")?,
-	Tooltip: string?,
-	Callback: ((boolean) -> ())?,
-}
-
-function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, registry: { [string]: any }, isEmbedded: boolean?)
-	local currentKey: Enum.KeyCode? = options.Default or Enum.KeyCode.Unknown
+function Keybind.New(parent, id, options, registry, isEmbedded)
+	local currentKey = options.Default or Enum.KeyCode.Unknown
 	local mode = options.Mode or "Toggle"
 	local callback = options.Callback or function() end
 	local isBinding = false
@@ -27,7 +18,7 @@ function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, reg
 		Size = isEmbedded and UDim2.new(0, 46, 0, 18) or UDim2.new(1, 0, 0, 26),
 		BackgroundTransparency = 1,
 		Parent = parent,
-	}) :: Frame
+	})
 
 	if options.Tooltip then
 		Tooltip.Attach(frame, options.Tooltip)
@@ -43,7 +34,7 @@ function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, reg
 			TextSize = 13,
 			Font = Enum.Font.GothamMedium,
 			Parent = frame,
-		}) :: TextLabel
+		})
 		Theme.Register(label, "TextColor3", "Text")
 	end
 
@@ -52,13 +43,13 @@ function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, reg
 		AnchorPoint = isEmbedded and Vector2.zero or Vector2.new(1, 0.5),
 		Position = isEmbedded and UDim2.new(0, 0, 0, 0) or UDim2.new(1, -2, 0.5, 0),
 		BackgroundColor3 = Theme.Get("Surface"),
-		Text = currentKey and currentKey ~= Enum.KeyCode.Unknown and (currentKey :: Enum.KeyCode).Name or "None",
+		Text = currentKey and currentKey ~= Enum.KeyCode.Unknown and currentKey.Name or "None",
 		TextColor3 = Theme.Get("SubText"),
 		TextSize = 11,
 		Font = Enum.Font.GothamBold,
 		AutoButtonColor = false,
 		Parent = frame,
-	}) :: TextButton
+	})
 	Elements.Round(keyBtn, 4)
 	local keyStroke = Elements.Stroke(keyBtn, Theme.Get("Border"), 1, 0)
 	Theme.Register(keyBtn, "BackgroundColor3", "Surface")
@@ -70,12 +61,12 @@ function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, reg
 		Mode = mode,
 		Toggled = false,
 		Callback = callback,
-		SetValue = function(self: any, newKey: Enum.KeyCode)
+		SetValue = function(self, newKey)
 			self.Value = newKey
 			currentKey = newKey
 			keyBtn.Text = newKey and newKey ~= Enum.KeyCode.Unknown and newKey.Name or "None"
 		end,
-		SetMode = function(self: any, newMode: "Toggle" | "Hold" | "Always")
+		SetMode = function(self, newMode)
 			self.Mode = newMode
 			mode = newMode
 		end,
@@ -87,7 +78,6 @@ function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, reg
 		keyStroke.Color = Theme.Get("Accent")
 	end)
 
-	-- Right click to cycle Mode
 	keyBtn.MouseButton2Click:Connect(function()
 		if mode == "Toggle" then
 			keybindObj:SetMode("Hold")
@@ -100,7 +90,7 @@ function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, reg
 		end
 	end)
 
-	local c1 = UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
+	local c1 = UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if isBinding then
 			if input.UserInputType == Enum.UserInputType.Keyboard then
 				isBinding = false
@@ -127,7 +117,7 @@ function Keybind.New(parent: GuiObject, id: string, options: KeybindOptions, reg
 		end
 	end)
 
-	local c2 = UserInputService.InputEnded:Connect(function(input: InputObject)
+	local c2 = UserInputService.InputEnded:Connect(function(input)
 		if not isBinding and currentKey and currentKey ~= Enum.KeyCode.Unknown and input.KeyCode == currentKey and mode == "Hold" and isHolding then
 			isHolding = false
 			keybindObj.Toggled = false

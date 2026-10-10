@@ -224,7 +224,16 @@ function Window.New(gui, options, library)
 		Parent = sidebar,
 	})
 
-	local sideDivider = Elements.Hairline(sidebar, "Right")
+	local sideDivider = Elements.Create("Frame", {
+		Name = "SideDivider",
+		Size = UDim2.new(0, 1, 1, -44 - 24),
+		Position = UDim2.new(0, sidebarWidth, 0, 44),
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0.92,
+		BorderSizePixel = 0,
+		ZIndex = 5,
+		Parent = main,
+	})
 	Theme.Register(sideDivider, "BackgroundColor3", "Hairline")
 
 	-- 3. Content Pages Area
@@ -391,7 +400,7 @@ function Window.New(gui, options, library)
 			})
 		else
 			launcher:SetVisible(true)
-			local outTween = Elements.Tween(mainScale, TweenInfo.new(Motion.Duration.Fast, Motion.Easing.QuadIn), {
+			local outTween = Elements.Tween(mainScale, TweenInfo.new(Motion.Duration.Fast, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 				Scale = 0.95,
 			})
 			outTween.Completed:Connect(function()

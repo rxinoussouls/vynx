@@ -82,8 +82,9 @@ end
 function Elements.Shadow(target, radius, opacity)
 	local shadowHolder = Instance.new("Frame")
 	shadowHolder.Name = "ShadowHolder"
-	shadowHolder.Size = UDim2.new(1, 16, 1, 16)
-	shadowHolder.Position = UDim2.new(0, -8, 0, -4)
+	shadowHolder.AnchorPoint = target.AnchorPoint
+	shadowHolder.Size = UDim2.new(target.Size.X.Scale, target.Size.X.Offset + 16, target.Size.Y.Scale, target.Size.Y.Offset + 16)
+	shadowHolder.Position = UDim2.new(target.Position.X.Scale, target.Position.X.Offset, target.Position.Y.Scale, target.Position.Y.Offset + 4)
 	shadowHolder.BackgroundTransparency = 1
 	shadowHolder.ZIndex = math.max(1, (target.ZIndex or 2) - 1)
 	shadowHolder.Parent = target.Parent
@@ -105,20 +106,17 @@ function Elements.Shadow(target, radius, opacity)
 		layer.Parent = shadowHolder
 	end
 
-	target:GetPropertyChangedSignal("Visible"):Connect(function()
+	local function sync()
 		shadowHolder.Visible = target.Visible
-	end)
-	target:GetPropertyChangedSignal("Position"):Connect(function()
-		shadowHolder.Position = UDim2.new(
-			target.Position.X.Scale,
-			target.Position.X.Offset - 8,
-			target.Position.Y.Scale,
-			target.Position.Y.Offset - 4
-		)
-	end)
-	target:GetPropertyChangedSignal("Size"):Connect(function()
+		shadowHolder.AnchorPoint = target.AnchorPoint
+		shadowHolder.Position = UDim2.new(target.Position.X.Scale, target.Position.X.Offset, target.Position.Y.Scale, target.Position.Y.Offset + 4)
 		shadowHolder.Size = UDim2.new(target.Size.X.Scale, target.Size.X.Offset + 16, target.Size.Y.Scale, target.Size.Y.Offset + 16)
-	end)
+	end
+
+	target:GetPropertyChangedSignal("Visible"):Connect(sync)
+	target:GetPropertyChangedSignal("Position"):Connect(sync)
+	target:GetPropertyChangedSignal("Size"):Connect(sync)
+	target:GetPropertyChangedSignal("AnchorPoint"):Connect(sync)
 
 	target.Destroying:Connect(function()
 		shadowHolder:Destroy()

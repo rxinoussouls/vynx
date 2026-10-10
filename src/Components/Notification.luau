@@ -176,7 +176,7 @@ function Notification.Show(info)
 		end
 
 		if wrapper.Parent then
-			local outTween = Elements.Tween(toast, TweenInfo.new(Motion.Duration.Base, Motion.Easing.QuadIn), {
+			local outTween = Elements.Tween(toast, TweenInfo.new(Motion.Duration.Base, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 				Position = UDim2.new(1, 340, 0, 0),
 			})
 			outTween.Completed:Connect(function()

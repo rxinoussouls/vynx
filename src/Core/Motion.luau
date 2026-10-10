@@ -1,9 +1,26 @@
 local TweenService = game:GetService("TweenService")
 
-local Motion = {
+local Duration = {
 	Fast = 0.12,
 	Base = 0.20,
 	Slow = 0.35,
+}
+
+local Easing = {
+	QuadOut = Enum.EasingStyle.Quad,
+	QuadIn = Enum.EasingStyle.Quad,
+	QuintOut = Enum.EasingStyle.Quint,
+	QuintIn = Enum.EasingStyle.Quint,
+	BackOut = Enum.EasingStyle.Back,
+	BackIn = Enum.EasingStyle.Back,
+}
+
+local Motion = {
+	Fast = Duration.Fast,
+	Base = Duration.Base,
+	Slow = Duration.Slow,
+	Duration = Duration,
+	Easing = Easing,
 	DefaultEasing = Enum.EasingStyle.Quad,
 	DefaultDirection = Enum.EasingDirection.Out,
 	QuintEasing = Enum.EasingStyle.Quint,

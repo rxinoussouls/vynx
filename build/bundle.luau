@@ -18,10 +18,27 @@ end
 _modules['Core.Motion'] = function()
 local TweenService = game:GetService("TweenService")
 
-local Motion = {
+local Duration = {
 	Fast = 0.12,
 	Base = 0.20,
 	Slow = 0.35,
+}
+
+local Easing = {
+	QuadOut = Enum.EasingStyle.Quad,
+	QuadIn = Enum.EasingStyle.Quad,
+	QuintOut = Enum.EasingStyle.Quint,
+	QuintIn = Enum.EasingStyle.Quint,
+	BackOut = Enum.EasingStyle.Back,
+	BackIn = Enum.EasingStyle.Back,
+}
+
+local Motion = {
+	Fast = Duration.Fast,
+	Base = Duration.Base,
+	Slow = Duration.Slow,
+	Duration = Duration,
+	Easing = Easing,
 	DefaultEasing = Enum.EasingStyle.Quad,
 	DefaultDirection = Enum.EasingDirection.Out,
 	QuintEasing = Enum.EasingStyle.Quint,
@@ -327,8 +344,9 @@ end
 function Elements.Shadow(target, radius, opacity)
 	local shadowHolder = Instance.new("Frame")
 	shadowHolder.Name = "ShadowHolder"
-	shadowHolder.Size = UDim2.new(1, 16, 1, 16)
-	shadowHolder.Position = UDim2.new(0, -8, 0, -4)
+	shadowHolder.AnchorPoint = target.AnchorPoint
+	shadowHolder.Size = UDim2.new(target.Size.X.Scale, target.Size.X.Offset + 16, target.Size.Y.Scale, target.Size.Y.Offset + 16)
+	shadowHolder.Position = UDim2.new(target.Position.X.Scale, target.Position.X.Offset, target.Position.Y.Scale, target.Position.Y.Offset + 4)
 	shadowHolder.BackgroundTransparency = 1
 	shadowHolder.ZIndex = math.max(1, (target.ZIndex or 2) - 1)
 	shadowHolder.Parent = target.Parent
@@ -350,20 +368,17 @@ function Elements.Shadow(target, radius, opacity)
 		layer.Parent = shadowHolder
 	end
 
-	target:GetPropertyChangedSignal("Visible"):Connect(function()
+	local function sync()
 		shadowHolder.Visible = target.Visible
-	end)
-	target:GetPropertyChangedSignal("Position"):Connect(function()
-		shadowHolder.Position = UDim2.new(
-			target.Position.X.Scale,
-			target.Position.X.Offset - 8,
-			target.Position.Y.Scale,
-			target.Position.Y.Offset - 4
-		)
-	end)
-	target:GetPropertyChangedSignal("Size"):Connect(function()
+		shadowHolder.AnchorPoint = target.AnchorPoint
+		shadowHolder.Position = UDim2.new(target.Position.X.Scale, target.Position.X.Offset, target.Position.Y.Scale, target.Position.Y.Offset + 4)
 		shadowHolder.Size = UDim2.new(target.Size.X.Scale, target.Size.X.Offset + 16, target.Size.Y.Scale, target.Size.Y.Offset + 16)
-	end)
+	end
+
+	target:GetPropertyChangedSignal("Visible"):Connect(sync)
+	target:GetPropertyChangedSignal("Position"):Connect(sync)
+	target:GetPropertyChangedSignal("Size"):Connect(sync)
+	target:GetPropertyChangedSignal("AnchorPoint"):Connect(sync)
 
 	target.Destroying:Connect(function()
 		shadowHolder:Destroy()
@@ -3473,7 +3488,7 @@ function Notification.Show(info)
 		end
 
 		if wrapper.Parent then
-			local outTween = Elements.Tween(toast, TweenInfo.new(Motion.Duration.Base, Motion.Easing.QuadIn), {
+			local outTween = Elements.Tween(toast, TweenInfo.new(Motion.Duration.Base, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 				Position = UDim2.new(1, 340, 0, 0),
 			})
 			outTween.Completed:Connect(function()
@@ -4507,7 +4522,16 @@ function Window.New(gui, options, library)
 		Parent = sidebar,
 	})
 
-	local sideDivider = Elements.Hairline(sidebar, "Right")
+	local sideDivider = Elements.Create("Frame", {
+		Name = "SideDivider",
+		Size = UDim2.new(0, 1, 1, -44 - 24),
+		Position = UDim2.new(0, sidebarWidth, 0, 44),
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0.92,
+		BorderSizePixel = 0,
+		ZIndex = 5,
+		Parent = main,
+	})
 	Theme.Register(sideDivider, "BackgroundColor3", "Hairline")
 
 	-- 3. Content Pages Area
@@ -4674,7 +4698,7 @@ function Window.New(gui, options, library)
 			})
 		else
 			launcher:SetVisible(true)
-			local outTween = Elements.Tween(mainScale, TweenInfo.new(Motion.Duration.Fast, Motion.Easing.QuadIn), {
+			local outTween = Elements.Tween(mainScale, TweenInfo.new(Motion.Duration.Fast, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 				Scale = 0.95,
 			})
 			outTween.Completed:Connect(function()

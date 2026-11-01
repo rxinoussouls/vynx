@@ -7,7 +7,6 @@ import time
 import aiohttp
 from aiohttp import web
 
-# ดึง Token และตัดช่องว่าง, เครื่องหมายคำพูด " ", และคำว่า Bot ออกอัตโนมัติ
 raw_token = os.environ.get("BOT_TOKEN", "").strip().strip('"').strip("'")
 if raw_token.startswith("Bot "):
     raw_token = raw_token[4:].strip()
@@ -21,13 +20,13 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 logger = logging.getLogger("VYNX_SECURITY")
 
 API_BASE = "https://discord.com/api/v10"
-bot_state = {"status": "starting", "user": None, "last_error": None}
+bot_state = {"status": "starting", "user": None, "last_error": None, "last_action": None}
 
 def get_headers():
     return {
         "Authorization": f"Bot {BOT_TOKEN}",
         "Content-Type": "application/json",
-        "User-Agent": "DiscordBot (https://discord.com, 1.0)"
+        "User-Agent": "DiscordBot (https://github.com/rxinoussouls/vynx, 2.0.0)"
     }
 
 async def api_request(session, method, endpoint, data=None):
@@ -36,12 +35,14 @@ async def api_request(session, method, endpoint, data=None):
         async with session.request(method, url, headers=get_headers(), json=data) as resp:
             text = await resp.text()
             if resp.status in (200, 201):
+                bot_state["last_error"] = None
                 return json.loads(text) if text else {}
             elif resp.status == 204:
+                bot_state["last_error"] = None
                 return True
             else:
-                logger.error(f"Discord API {method} {endpoint} -> HTTP {resp.status}: {text}")
-                bot_state["last_error"] = f"HTTP {resp.status}: {text}"
+                logger.error(f"Discord API {method} {endpoint} -> HTTP {resp.status}: {text[:200]}")
+                bot_state["last_error"] = f"HTTP {resp.status}: {text[:300]}"
                 return None
     except Exception as e:
         logger.error(f"API Exception ({method} {endpoint}): {e}")
@@ -54,12 +55,16 @@ async def handle_interaction(session, data):
     app_id = data.get("application_id")
     user_data = data.get("member", {}).get("user", {})
     user_id = user_data.get("id")
+    username = user_data.get("username", "Unknown")
     custom_id = data.get("data", {}).get("custom_id", "")
 
     if custom_id not in ("verify_member", "vynx_verify_btn"):
         return
 
-    # 1. Defer Ephemeral ทันทีใน 0.1 วิ ป้องกัน 3s interaction timeout
+    bot_state["last_action"] = f"Clicked: {username} ({user_id}) at {time.strftime('%X')}"
+    logger.info(f"Interaction received from {username} ({user_id})")
+
+    # 1. Defer Ephemeral ทันทีใน 0.1 วิ ป้องกัน 3s timeout
     defer_payload = {"type": 5, "data": {"flags": 64}}
     await api_request(session, "POST", f"/interactions/{int_id}/{int_token}/callback", defer_payload)
 
@@ -75,13 +80,17 @@ async def handle_interaction(session, data):
         res = await api_request(session, "PUT", endpoint)
         if res:
             msg = "✅ **Verified**: ปลดล็อกการเข้าถึงระบบ VYNX เรียบร้อยแล้ว!"
-            logger.info(f"Verified member: {user_data.get('username')} ({user_id})")
+            logger.info(f"Verified member successfully: {username} ({user_id})")
         else:
-            msg = (
-                "⚠️ **Missing Permissions**: บอทไม่สามารถให้ยศได้\n"
-                "โปรดตรวจสอบใน Discord Server Settings > Roles ให้ลากยศ **VYNX DEV** ไว้สูงกว่ายศ **VYNX User**"
-            )
-            logger.error(f"Failed to give role to {user_id}")
+            err_detail = bot_state.get("last_error", "")
+            if "1015" in err_detail or "429" in err_detail:
+                msg = "⚠️ **Rate Limit**: Discord API กำลังรอคูลดาวน์ชั่วคราว กรุณากดใหม่อีกครั้งใน 2 นาที"
+            else:
+                msg = (
+                    "⚠️ **Missing Permissions**: บอทไม่สามารถให้ยศได้\n"
+                    "โปรดตรวจสอบใน Discord Server Settings > Roles ให้ลากยศ **VYNX DEV** ไว้สูงกว่ายศ **VYNX User**"
+                )
+            logger.error(f"Failed to give role to {user_id}: {err_detail}")
 
     # 4. อัปเดตข้อความหลังประมวลผลเสร็จ
     edit_endpoint = f"/webhooks/{app_id}/{int_token}/messages/@original"
@@ -128,17 +137,12 @@ async def run_bot():
                             if op == 10:  # Hello
                                 interval = d["heartbeat_interval"]
                                 heartbeat_task = asyncio.create_task(heartbeat_loop(interval))
-                                # ใช้ intents: 0 สำหรับ Verification Button ไม่ต้องขอ Privileged Intents
                                 await ws.send_json({
                                     "op": 2,
                                     "d": {
                                         "token": BOT_TOKEN,
                                         "intents": 0,
-                                        "properties": {
-                                            "os": "linux",
-                                            "browser": "vynx",
-                                            "device": "vynx"
-                                        }
+                                        "properties": {"os": "linux", "browser": "vynx", "device": "vynx"}
                                     }
                                 })
                             elif op == 1:
@@ -160,12 +164,10 @@ async def run_bot():
                                     asyncio.create_task(handle_interaction(session, d))
 
                         elif msg.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.CLOSED):
-                            logger.error(f"Discord Gateway closed connection: Code {msg.data} ({msg.extra})")
+                            logger.error(f"Discord Gateway closed: Code {msg.data} ({msg.extra})")
                             bot_state["last_error"] = f"Gateway closed: Code {msg.data} ({msg.extra})"
                             if msg.data == 4004:
-                                logger.critical("FATAL: Discord Token is invalid or expired! Reset token in Discord Dev Portal and update Render.")
-                            elif msg.data == 4014:
-                                logger.critical("FATAL: Disallowed Intents! Set intents to 0.")
+                                logger.critical("FATAL: Discord Token is invalid or expired!")
                             break
                         elif msg.type == aiohttp.WSMsgType.ERROR:
                             logger.error(f"WebSocket Error: {ws.exception()}")
@@ -181,11 +183,20 @@ async def run_bot():
             logger.info("Reconnecting to Discord Gateway in 5 seconds...")
             await asyncio.sleep(5)
 
-# Web Server สำหรับ Render Free Tier & UptimeRobot
 async def start_web_server():
     app = web.Application()
     app.router.add_get("/", lambda r: web.Response(text="VYNX Security Bot Online 24/7", content_type="text/plain"))
     app.router.add_get("/status", lambda r: web.json_response(bot_state))
+    
+    async def test_discord_route(request):
+        async with aiohttp.ClientSession() as s:
+            res = await api_request(s, "GET", "/users/@me")
+            if res:
+                return web.json_response({"discord_api": "ok", "user": res.get("username")})
+            else:
+                return web.json_response({"discord_api": "blocked_or_error", "detail": bot_state.get("last_error")}, status=502)
+    app.router.add_get("/test-discord", test_discord_route)
+
     runner = web.AppRunner(app)
     await runner.setup()
     port = int(os.environ.get("PORT", 8080))

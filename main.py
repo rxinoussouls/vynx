@@ -64,45 +64,45 @@ async def handle_interaction(session, data):
     bot_state["last_action"] = f"Clicked: {username} ({user_id}) at {time.strftime('%X')}"
     logger.info(f"Interaction received from {username} ({user_id})")
 
-    # 1. Defer Ephemeral ทันทีใน 0.1 วิ ป้องกัน 3s timeout
+    # 1. Defer immediately (ephemeral) within 0.1s to avoid 3s timeout
     defer_payload = {"type": 5, "data": {"flags": 64}}
     await api_request(session, "POST", f"/interactions/{int_id}/{int_token}/callback", defer_payload)
 
-    # 2. ตรวจสอบอายุ Discord Account
+    # 2. Check account age
     created_ts = ((int(user_id) >> 22) + 1420070400000) / 1000.0
     account_age_days = (time.time() - created_ts) / 86400.0
 
     if account_age_days < MIN_ACCOUNT_AGE_DAYS:
-        msg = f"❌ **Verification Failed**: บัญชี Discord ของคุณต้องมีอายุอย่างน้อย {MIN_ACCOUNT_AGE_DAYS} วัน"
+        msg = f"❌ **Verification Failed**: Your Discord account must be at least {MIN_ACCOUNT_AGE_DAYS} days old."
     else:
-        # 3. ให้ยศ Verify แก่ Member
+        # 3. Assign role
         endpoint = f"/guilds/{GUILD_ID}/members/{user_id}/roles/{VERIFY_ROLE_ID}"
         res = await api_request(session, "PUT", endpoint)
         if res:
-            msg = "✅ **Verified**: ปลดล็อกการเข้าถึงระบบ VYNX เรียบร้อยแล้ว!"
-            logger.info(f"Verified member successfully: {username} ({user_id})")
+            msg = "✅ **Verified**: Access granted. Welcome to VYNX."
+            logger.info(f"Verified member: {username} ({user_id})")
         else:
             err_detail = bot_state.get("last_error", "")
             if "1015" in err_detail or "429" in err_detail:
-                msg = "⚠️ **Rate Limit**: Discord API กำลังรอคูลดาวน์ชั่วคราว กรุณากดใหม่อีกครั้งใน 2 นาที"
+                msg = "⚠️ **Rate Limited**: Discord API is busy. Please retry in 1 minute."
             else:
                 msg = (
-                    "⚠️ **Missing Permissions**: บอทไม่สามารถให้ยศได้\n"
-                    "โปรดตรวจสอบใน Discord Server Settings > Roles ให้ลากยศ **VYNX DEV** ไว้สูงกว่ายศ **VYNX User**"
+                    "⚠️ **Missing Permissions**: The bot cannot assign this role.\n"
+                    "Move the `VYNX DEV` role above `VYNX User` in Discord Server Settings > Roles."
                 )
-            logger.error(f"Failed to give role to {user_id}: {err_detail}")
+            logger.error(f"Failed to assign role to {user_id}: {err_detail}")
 
-    # 4. อัปเดตข้อความหลังประมวลผลเสร็จ
+    # 4. Edit deferred response
     edit_endpoint = f"/webhooks/{app_id}/{int_token}/messages/@original"
     await api_request(session, "PATCH", edit_endpoint, {"content": msg})
 
 async def run_bot():
     if not BOT_TOKEN:
-        logger.critical("BOT_TOKEN is not configured! Please set BOT_TOKEN in Environment Variables.")
+        logger.critical("BOT_TOKEN is not configured in Environment Variables.")
         bot_state["status"] = "missing_token"
         return
 
-    logger.info(f"BOT_TOKEN loaded (length: {len(BOT_TOKEN)} chars). Connecting to Discord Gateway...")
+    logger.info(f"BOT_TOKEN loaded ({len(BOT_TOKEN)} chars). Connecting to Discord Gateway...")
 
     async with aiohttp.ClientSession() as session:
         while True:
@@ -142,16 +142,20 @@ async def run_bot():
                                     "d": {
                                         "token": BOT_TOKEN,
                                         "intents": 0,
-                                        "properties": {"os": "linux", "browser": "vynx", "device": "vynx"}
+                                        "properties": {
+                                            "os": "linux",
+                                            "browser": "vynx",
+                                            "device": "vynx"
+                                        }
                                     }
                                 })
                             elif op == 1:
                                 await ws.send_json({"op": 1, "d": last_seq})
                             elif op == 7:
-                                logger.info("Discord Gateway requested reconnect (Op 7).")
+                                logger.info("Discord Gateway requested reconnect.")
                                 break
                             elif op == 9:
-                                logger.warning("Discord Gateway invalid session (Op 9).")
+                                logger.warning("Discord Gateway invalid session.")
                                 await asyncio.sleep(2)
                                 break
                             elif op == 0:
@@ -159,7 +163,7 @@ async def run_bot():
                                     user = d.get("user", {})
                                     bot_state["status"] = "ready"
                                     bot_state["user"] = f"{user.get('username')}#{user.get('discriminator')}"
-                                    logger.info(f"Bot successfully logged in as {bot_state['user']}!")
+                                    logger.info(f"Bot online as {bot_state['user']}")
                                 elif t == "INTERACTION_CREATE":
                                     asyncio.create_task(handle_interaction(session, d))
 
@@ -167,7 +171,7 @@ async def run_bot():
                             logger.error(f"Discord Gateway closed: Code {msg.data} ({msg.extra})")
                             bot_state["last_error"] = f"Gateway closed: Code {msg.data} ({msg.extra})"
                             if msg.data == 4004:
-                                logger.critical("FATAL: Discord Token is invalid or expired!")
+                                logger.critical("FATAL: Discord Token is invalid or expired.")
                             break
                         elif msg.type == aiohttp.WSMsgType.ERROR:
                             logger.error(f"WebSocket Error: {ws.exception()}")
@@ -180,7 +184,7 @@ async def run_bot():
                 logger.error(f"Gateway error: {e}")
                 bot_state["last_error"] = str(e)
 
-            logger.info("Reconnecting to Discord Gateway in 5 seconds...")
+            logger.info("Reconnecting in 5 seconds...")
             await asyncio.sleep(5)
 
 async def start_web_server():
